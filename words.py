@@ -1,4 +1,4 @@
-UNKNOWN_IDX = 1
+UNKNOWN_IDX = 4092  # for unknown words output "thing"
 
 words = open('vocabulary.txt').read().split()
 VOCABULARY_SIZE = len(words)
