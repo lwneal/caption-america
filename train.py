@@ -10,7 +10,7 @@ from StringIO import StringIO
 import words
 from words import VOCABULARY_SIZE
 import dataset_grefexp
-from util import onehot, expand, decode_jpg, left_pad, MAX_WORDS
+from util import onehot, expand, decode_jpg, left_pad, predict, MAX_WORDS
 
 GRU_SIZE = 1024
 WORDVEC_SIZE = 300
@@ -75,4 +75,5 @@ if __name__ == '__main__':
         model = build_model()
     while True:
         model.fit_generator(gen(), samples_per_epoch=2**7, nb_epoch=1)
-        model.save('model.h5')
+        model.save(model_filename)
+        print(predict(model, decode_jpg('cat.jpg')))
