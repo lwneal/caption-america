@@ -12,7 +12,7 @@ KEY_GREFEXP_TRAIN = 'dataset_grefexp_train'
 KEY_GREFEXP_VAL = 'dataset_grefexp_val'
 
 conn = redis.Redis()
-
+categories = {v['id']: v['name'] for v in json.load(open('coco_categories.json'))}
 
 def random_annotation(reference_key=KEY_GREFEXP_TRAIN):
     key = conn.srandmember(reference_key)
@@ -40,4 +40,5 @@ def example(reference_key=KEY_GREFEXP_TRAIN):
     x0, y0, width, height = anno['bbox']
     box = (x0, x0 + width, y0, y0 + height)
     text = random.choice(grefexp['refexps'])['raw']
-    return jpg_data, box, text
+    cat = categories[anno['category_id']]
+    return jpg_data, box, cat

@@ -8,7 +8,7 @@ from words import VOCABULARY_SIZE
 
 
 IMG_SHAPE = (224,224)
-MAX_WORDS = 20
+MAX_WORDS = 3
 
 
 def onehot(index):
@@ -21,15 +21,27 @@ def expand(x):
     return np.expand_dims(x, axis=0)
 
 
-def decode_jpg(jpg):
+def decode_jpg(jpg, preprocess=True):
     if jpg.startswith('\xFF\xD8'):
         # jpg is a JPG buffer
         img = Image.open(StringIO(jpg))
     else:
         # jpg is a filename
         img = Image.open(jpg)
-    pixels = np.array(img.convert('RGB').resize(IMG_SHAPE)).astype(float)
-    return imagenet_process(pixels)
+    img = img.convert('RGB')
+    if preprocess:
+        img = img.resize(IMG_SHAPE)
+    pixels = np.array(img).astype(float)
+    if preprocess:
+        pixels = imagenet_process(pixels)
+    return pixels
+
+
+def encode_jpg(pixels):
+    img = Image.fromarray(pixels.astype(np.uint8)).convert('RGB')
+    fp = StringIO()
+    img.save(fp, format='JPEG')
+    return fp.getvalue()
 
 
 def imagenet_process(x):
@@ -55,3 +67,10 @@ def predict(model, img):
     return words.words(indices)
 
 
+def show(jpg, box=None):
+    pixels = decode_jpg(jpg, preprocess=False)
+    if box:
+        draw_box(pixels, box)
+    with open('/tmp/example.jpg', 'w') as fp:
+        fp.write(encode_jpg(pixels))
+        os.system('imgcat /tmp/example.jpg')

@@ -36,24 +36,23 @@ def build_model():
     model.add(layers.GRU(GRU_SIZE, return_sequences=False))
     model.add(layers.Dense(VOCABULARY_SIZE))
     model.add(layers.Activation('softmax'))
-    model.compile(optimizer='adam', loss='categorical_crossentropy', metrics=['accuracy'], decay=.0001)
+    model.compile(optimizer='rmsprop', loss='categorical_crossentropy', metrics=['accuracy'], decay=.0001, lr=.001)
     return model
 
 
 def example():
     jpg_data, box, text = dataset_grefexp.example()
     x_img = decode_jpg(jpg_data)
-    x_img = expand(x_img)
     indices = words.indices(text)
+
     idx = np.random.randint(0, len(indices))
-    x_words = expand(left_pad(indices[:idx][-MAX_WORDS:]))
-    y = expand(onehot(indices[idx]))
+    x_words = left_pad(indices[:idx][-MAX_WORDS:])
+    y = onehot(indices[idx])
     return [x_img, x_words], y
 
 
 def gen():
     while True:
-        x_imgs, x_words, y = [], [], []
         BATCH_SIZE = 32
         X_img = np.zeros((BATCH_SIZE,224,224,3))
         X_words = np.zeros((BATCH_SIZE, MAX_WORDS), dtype=int)
@@ -64,7 +63,7 @@ def gen():
             X_img[i] = x_img
             X_words[i] = x_words
             Y[i] = y
-        yield example()
+        yield [X_img, X_words], Y
 
 
 if __name__ == '__main__':
@@ -74,6 +73,8 @@ if __name__ == '__main__':
     else:
         model = build_model()
     while True:
-        model.fit_generator(gen(), samples_per_epoch=2**7, nb_epoch=1)
+        model.fit_generator(gen(), samples_per_epoch=2**10, nb_epoch=4)
         model.save(model_filename)
         print(predict(model, decode_jpg('cat.jpg')))
+        print(predict(model, decode_jpg('horse.jpg')))
+        print(predict(model, decode_jpg('dog.jpg')))
