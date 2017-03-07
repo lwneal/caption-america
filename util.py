@@ -28,7 +28,16 @@ def decode_jpg(jpg):
     else:
         # jpg is a filename
         img = Image.open(jpg)
-    return np.array(img.convert('RGB').resize(IMG_SHAPE))
+    pixels = np.array(img.convert('RGB').resize(IMG_SHAPE)).astype(float)
+    return imagenet_process(pixels)
+
+
+def imagenet_process(x):
+    x[:, :, 0] -= 103.939
+    x[:, :, 1] -= 116.779
+    x[:, :, 2] -= 123.68
+    # 'RGB'->'BGR'
+    return x[:, :, ::-1]
 
 
 def left_pad(indices):
@@ -44,3 +53,5 @@ def predict(model, img):
         indices = np.roll(indices, -1)
         indices[-1] = np.argmax(preds[0], axis=-1)
     return words.words(indices)
+
+

@@ -36,7 +36,7 @@ def build_model():
     model.add(layers.GRU(GRU_SIZE, return_sequences=False))
     model.add(layers.Dense(VOCABULARY_SIZE))
     model.add(layers.Activation('softmax'))
-    model.compile(optimizer='adam', loss='categorical_crossentropy', metrics=['accuracy'])
+    model.compile(optimizer='adam', loss='categorical_crossentropy', metrics=['accuracy'], decay=.0001)
     return model
 
 
@@ -74,5 +74,5 @@ if __name__ == '__main__':
     else:
         model = build_model()
     while True:
-        model.fit_generator(gen(), samples_per_epoch=2**5, nb_epoch=1)
+        model.fit_generator(gen(), samples_per_epoch=2**7, nb_epoch=1)
         model.save('model.h5')
