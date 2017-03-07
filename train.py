@@ -4,38 +4,40 @@ from keras import models, layers
 import resnet50
 import numpy as np
 from PIL import Image
+from StringIO import StringIO
 
+import words
+from words import VOCABULARY_SIZE
+import dataset_grefexp
+
+
+IMG_SHAPE = (224,224)
 MAX_WORDS = 20
-VOCABULARY_SIZE = 100
+GRU_SIZE = 256
+WORDVEC_SIZE = 300
+
 
 def build_model():
     resnet = resnet50.ResNet50(include_top=True)
     for layer in resnet.layers:
         layer.trainable = False
 
-    # image output: 1000-dim per word
     image_model = models.Sequential()
     image_model.add(resnet)
     image_model.add(layers.RepeatVector(MAX_WORDS))
 
     language_model = models.Sequential()
-    language_model.add(layers.Embedding(VOCABULARY_SIZE, 300, input_length=MAX_WORDS, mask_zero=True))
-    language_model.add(layers.GRU(256, return_sequences=True))
+    language_model.add(layers.Embedding(VOCABULARY_SIZE, WORDVEC_SIZE, input_length=MAX_WORDS, mask_zero=True))
+    language_model.add(layers.GRU(GRU_SIZE, return_sequences=True))
     language_model.add(layers.TimeDistributed(layers.Dense(128)))
     
     model = models.Sequential()
     model.add(layers.Merge([image_model, language_model], mode='concat', concat_axis=-1))
-    model.add(layers.GRU(256, return_sequences=False))
+    model.add(layers.GRU(GRU_SIZE, return_sequences=False))
     model.add(layers.Dense(VOCABULARY_SIZE))
     model.add(layers.Activation('softmax'))
     model.compile(optimizer='adam', loss='categorical_crossentropy', metrics=['accuracy'])
     return model
-
-
-def img(name):
-    pil_img = Image.open(name).resize((224,224))
-    pil_img.load()
-    return np.array(pil_img) / 255.
 
 
 def onehot(index):
@@ -53,28 +55,34 @@ def left_pad(indices):
 def expand(x):
     return np.expand_dims(x, axis=0)
 
-def predict(model, img):
-    words = left_pad([])
-    for _ in range(MAX_WORDS):
-        preds = model.predict([img, expand(words)])
-        words = np.roll(words, -1)
-        words[-1] = np.argmax(preds[0], axis=-1)
-    return words
+
+def decode_jpg(jpg):
+    img = Image.open(StringIO(jpg)).convert('RGB').resize(IMG_SHAPE)
+    return np.array(img)
+
 
 def example():
-    words = range(1,MAX_WORDS+1)
-    idx = np.random.randint(0, MAX_WORDS - 1)
-    x_words = expand(left_pad(words[:idx]))
-    y = expand(onehot(words[idx]))
-    return [cat, x_words], y
+    jpg_data, box, text = dataset_grefexp.example()
+    x_img = decode_jpg(jpg_data)
+    x_img = expand(x_img)
+    indices = words.indices(text)
+    idx = np.random.randint(0, len(indices))
+    x_words = expand(left_pad(indices[:idx][-MAX_WORDS:]))
+    y = expand(onehot(indices[idx]))
+    return [x_img, x_words], y
+
 
 def gen():
-    while True: yield example()
+    while True:
+        yield example()
 
-model = build_model()
-cat = expand(img('cat.jpg'))
 
-for _ in range(1000):
-    x, y = example()
-    model.train_on_batch(x, y)
-    print predict(model, cat)
+if __name__ == '__main__':
+    model_filename = sys.argv[1]
+    if os.path.exists(model_filename):
+        model = models.load_model(model_filename)
+    else:
+        model = build_model()
+    while True:
+        model.fit_generator(gen(), samples_per_epoch=2**8, nb_epoch=1)
+        model.save('model.h5')
