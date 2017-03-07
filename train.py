@@ -9,10 +9,9 @@ from StringIO import StringIO
 import words
 from words import VOCABULARY_SIZE
 import dataset_grefexp
+from util import onehot, expand, decode_jpg, left_pad, MAX_WORDS
 
 
-IMG_SHAPE = (224,224)
-MAX_WORDS = 20
 GRU_SIZE = 256
 WORDVEC_SIZE = 300
 
@@ -29,7 +28,7 @@ def build_model():
     language_model = models.Sequential()
     language_model.add(layers.Embedding(VOCABULARY_SIZE, WORDVEC_SIZE, input_length=MAX_WORDS, mask_zero=True))
     language_model.add(layers.GRU(GRU_SIZE, return_sequences=True))
-    language_model.add(layers.TimeDistributed(layers.Dense(128)))
+    language_model.add(layers.TimeDistributed(layers.Dense(WORDVEC_SIZE)))
     
     model = models.Sequential()
     model.add(layers.Merge([image_model, language_model], mode='concat', concat_axis=-1))
@@ -38,27 +37,6 @@ def build_model():
     model.add(layers.Activation('softmax'))
     model.compile(optimizer='adam', loss='categorical_crossentropy', metrics=['accuracy'])
     return model
-
-
-def onehot(index):
-    res = np.zeros(VOCABULARY_SIZE)
-    res[index] = 1.0
-    return res
-
-
-def left_pad(indices):
-    res = np.zeros(MAX_WORDS, dtype=int)
-    res[MAX_WORDS - len(indices):] = indices
-    return res
-
-
-def expand(x):
-    return np.expand_dims(x, axis=0)
-
-
-def decode_jpg(jpg):
-    img = Image.open(StringIO(jpg)).convert('RGB').resize(IMG_SHAPE)
-    return np.array(img)
 
 
 def example():
