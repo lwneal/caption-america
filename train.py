@@ -42,7 +42,8 @@ def build_model():
 
 def example():
     jpg_data, box, text = dataset_grefexp.example()
-    x_img = decode_jpg(jpg_data)
+
+    x_img = decode_jpg(jpg_data, box=box)
     indices = words.indices(text)
 
     idx = np.random.randint(0, len(indices))

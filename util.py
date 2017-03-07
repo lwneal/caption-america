@@ -21,7 +21,7 @@ def expand(x):
     return np.expand_dims(x, axis=0)
 
 
-def decode_jpg(jpg, preprocess=True):
+def decode_jpg(jpg, box=None, preprocess=True):
     if jpg.startswith('\xFF\xD8'):
         # jpg is a JPG buffer
         img = Image.open(StringIO(jpg))
@@ -29,6 +29,10 @@ def decode_jpg(jpg, preprocess=True):
         # jpg is a filename
         img = Image.open(jpg)
     img = img.convert('RGB')
+    if box:
+        # Crop to bounding box
+        x0, x1, y0, y1 = box
+        img = img.crop((x0,y0,x1,y1))
     if preprocess:
         img = img.resize(IMG_SHAPE)
     pixels = np.array(img).astype(float)
