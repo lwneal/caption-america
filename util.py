@@ -8,7 +8,7 @@ from words import VOCABULARY_SIZE
 
 
 IMG_SHAPE = (224,224)
-MAX_WORDS = 3
+MAX_WORDS = 10
 
 
 def onehot(index):
