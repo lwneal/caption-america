@@ -73,9 +73,11 @@ if __name__ == '__main__':
         model = models.load_model(model_filename)
     else:
         model = build_model()
+    i = 0
     while True:
         model.fit_generator(gen(), samples_per_epoch=2**10, nb_epoch=4)
         model.save(model_filename)
+        print("Results on cat/horse/dog after {}k examples:", i * 4)
         print(predict(model, decode_jpg('cat.jpg')))
         print(predict(model, decode_jpg('horse.jpg')))
         print(predict(model, decode_jpg('dog.jpg')))
