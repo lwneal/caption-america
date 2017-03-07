@@ -1,3 +1,4 @@
+import time
 import sys
 import os
 from keras import models, layers
@@ -52,6 +53,17 @@ def example():
 
 def gen():
     while True:
+        x_imgs, x_words, y = [], [], []
+        BATCH_SIZE = 32
+        X_img = np.zeros((BATCH_SIZE,224,224,3))
+        X_words = np.zeros((BATCH_SIZE, MAX_WORDS), dtype=int)
+        Y = np.zeros((BATCH_SIZE, VOCABULARY_SIZE))
+        for i in range(BATCH_SIZE):
+            x, y = example()
+            x_img, x_words = x
+            X_img[i] = x_img
+            X_words[i] = x_words
+            Y[i] = y
         yield example()
 
 
@@ -62,5 +74,5 @@ if __name__ == '__main__':
     else:
         model = build_model()
     while True:
-        model.fit_generator(gen(), samples_per_epoch=2**8, nb_epoch=1)
+        model.fit_generator(gen(), samples_per_epoch=2**5, nb_epoch=1)
         model.save('model.h5')
