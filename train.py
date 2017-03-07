@@ -12,8 +12,7 @@ from words import VOCABULARY_SIZE
 import dataset_grefexp
 from util import onehot, expand, decode_jpg, left_pad, MAX_WORDS
 
-
-GRU_SIZE = 256
+GRU_SIZE = 1024
 WORDVEC_SIZE = 300
 
 
@@ -24,6 +23,7 @@ def build_model():
 
     image_model = models.Sequential()
     image_model.add(resnet)
+    image_model.add(layers.Dense(WORDVEC_SIZE))
     image_model.add(layers.RepeatVector(MAX_WORDS))
 
     language_model = models.Sequential()
