@@ -107,4 +107,4 @@ def strip(text):
 
 def demo(model):
     for f in ['cat.jpg', 'dog.jpg', 'horse.jpg', 'car.jpg']:
-        print(util.predict(model, decode_jpg(f)))
+        print(util.predict(model, util.decode_jpg(f)))
