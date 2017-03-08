@@ -59,7 +59,7 @@ def training_generator():
 
 def process(jpg_data, box, texts):
     x_img = util.decode_jpg(jpg_data, box=box)
-    text = random.choice(texts)
+    text = util.strip(random.choice(texts))
     indices = words.indices(text)
     idx = np.random.randint(0, len(indices))
     x_words = util.left_pad(indices[:idx][-MAX_WORDS:])
@@ -76,8 +76,8 @@ def validation_generator():
 
 
 def evaluate(model, x, y):
-    candidate = strip(util.predict(model, x))
-    references = map(strip, y)
+    candidate = util.strip(util.predict(model, x))
+    references = map(util.strip, y)
     print("{}: {}".format(candidate, references))
     scores = {}
     scores['bleu1'], scores['bleu2'] = bleu(candidate, references)
@@ -92,17 +92,6 @@ def bleu(candidate, references):
 
 def rouge(candidate, references):
     return rouge_scorer.Rouge().calc_score([candidate], references)
-
-
-def strip(text):
-    # Remove the START_TOKEN
-    text = text.replace('000', '')
-    # Remove all text after the first END_TOKEN
-    end_idx = text.find('001')
-    if end_idx >= 0:
-        text = text[:end_idx]
-    # Remove non-alphanumeric characters and lowercase everything
-    return re.sub(r'\W+', ' ', text.lower()).strip()
 
 
 def demo(model):

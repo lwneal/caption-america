@@ -1,3 +1,4 @@
+import re
 import os
 import numpy as np
 from PIL import Image
@@ -78,3 +79,14 @@ def show(jpg, box=None):
     with open('/tmp/example.jpg', 'w') as fp:
         fp.write(encode_jpg(pixels))
         os.system('imgcat /tmp/example.jpg')
+
+
+def strip(text):
+    # Remove the START_TOKEN
+    text = text.replace('000', '')
+    # Remove all text after the first END_TOKEN
+    end_idx = text.find('001')
+    if end_idx >= 0:
+        text = text[:end_idx]
+    # Remove non-alphanumeric characters and lowercase everything
+    return re.sub(r'\W+', ' ', text.lower()).strip()
