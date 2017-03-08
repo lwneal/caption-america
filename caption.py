@@ -78,7 +78,7 @@ def validation_generator():
 def evaluate(model, x, y):
     candidate = util.strip(util.predict(model, x))
     references = map(util.strip, y)
-    print("{}: {}".format(candidate, references))
+    print("[1F[K{} ({})".format(candidate, references[0]))
     scores = {}
     scores['bleu1'], scores['bleu2'] = bleu(candidate, references)
     scores['rouge'] = rouge(candidate, references)

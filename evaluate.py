@@ -28,7 +28,7 @@ for X, Y in g:
             scores[k] = []
         scores[k].append(s[k])
     means = {k: np.mean(scores[k]) for k in scores}
-    print(means)
+    print('\n[K{} {}'.format(len(scores[k]), means)),
 
 for k in scores:
     from scipy import stats
