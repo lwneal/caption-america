@@ -20,8 +20,10 @@ def example(reference_key=KEY_GREFEXP_TRAIN):
     return get_annotation_for_key(key)
 
 
-def get_all_keys(reference_key=KEY_GREFEXP_VAL):
-    keys = conn.smembers(reference_key)
+def get_all_keys(reference_key=KEY_GREFEXP_VAL, shuffle=True):
+    keys = list(conn.smembers(reference_key))
+    if shuffle:
+        random.shuffle(keys)
     return keys
 
 
