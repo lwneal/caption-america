@@ -12,11 +12,9 @@ if len(sys.argv) > 2:
     model_filename = sys.argv[2]
 
 
+model = target.build_model()
 if os.path.exists(model_filename):
-    from keras.models import load_model
-    model = load_model(model_filename)
-else:
-    model = target.build_model()
+    model.load_weights(model_filename)
 
 model.compile(optimizer='rmsprop', loss='categorical_crossentropy', metrics=['accuracy'], decay=.001)
 
@@ -27,5 +25,5 @@ while True:
     model.fit_generator(g, samples_per_epoch=2**12, nb_epoch=1)
     i += 1
     print("After training {}k samples:".format(4 * i))
-    model.save(model_filename)
+    model.save_weights(model_filename)
     target.demo(model)
