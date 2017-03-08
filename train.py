@@ -19,7 +19,10 @@ else:
 
 g = target.training_generator()
 
+i = 0
 while True:
     model.fit_generator(g, samples_per_epoch=2**12, nb_epoch=1)
+    i += 1
+    print("After training {}k samples:".format(4 * i))
     model.save(model_filename)
     target.demo(model)
