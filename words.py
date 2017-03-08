@@ -8,7 +8,7 @@ for i, word in enumerate(words):
     vocab[word] = i
 
 VOCABULARY_SIZE = len(words)
-UNKNOWN_IDX = vocab['things']
+UNKNOWN_IDX = vocab['thing']
 
 
 def words(indices):
