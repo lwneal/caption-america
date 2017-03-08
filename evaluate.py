@@ -2,6 +2,8 @@ import os
 import sys
 import time
 import importlib
+import numpy as np
+from pprint import pprint
 
 module_name = sys.argv[1]
 module_name = module_name.rstrip('.py')
@@ -18,6 +20,17 @@ else:
     model = target.build_model()
 
 g = target.validation_generator()
-
+scores = {}
 for X, Y in g:
-    print target.predict(model, X)
+    s = target.evaluate(model, X, Y)
+    for k in s:
+        if k not in scores:
+            scores[k] = []
+        scores[k].append(s[k])
+    means = {k: np.mean(scores[k]) for k in scores}
+    print(means)
+
+for k in scores:
+    from scipy import stats
+    print("Score {} statistics:".format(k))
+    pprint(stats.describe(scores[k]))

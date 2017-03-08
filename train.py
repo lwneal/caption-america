@@ -7,7 +7,7 @@ module_name = sys.argv[1]
 module_name = module_name.rstrip('.py')
 target = importlib.import_module(module_name)
 
-model_filename = '{}.{}.h5'.format(module_name, int(time.time()))
+model_filename = 'model.{}.{}.h5'.format(module_name, int(time.time()))
 if len(sys.argv) > 2:
     model_filename = sys.argv[2]
 

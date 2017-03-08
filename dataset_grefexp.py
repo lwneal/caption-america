@@ -36,6 +36,6 @@ def get_annotation_for_key(key):
 
     x0, y0, width, height = anno['bbox']
     box = (x0, x0 + width, y0, y0 + height)
-    text = random.choice(grefexp['refexps'])['raw']
+    texts = [g['raw'] for g in grefexp['refexps']]
     category = categories[anno['category_id']]
-    return jpg_data, box, text
+    return jpg_data, box, texts
