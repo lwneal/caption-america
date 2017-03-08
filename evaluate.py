@@ -17,9 +17,7 @@ if os.path.exists(model_filename):
 else:
     model = target.build_model()
 
-g = target.training_generator()
+g = target.validation_generator()
 
-while True:
-    model.fit_generator(g, samples_per_epoch=2**12, nb_epoch=1)
-    model.save(model_filename)
-    target.demo(model)
+for X, Y in g:
+    print target.predict(model, X)

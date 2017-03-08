@@ -10,7 +10,8 @@ from StringIO import StringIO
 import words
 from words import VOCABULARY_SIZE
 import dataset_grefexp
-from util import onehot, expand, decode_jpg, left_pad, predict, MAX_WORDS
+import util
+from util import onehot, decode_jpg, left_pad, MAX_WORDS
 
 GRU_SIZE = 1024
 WORDVEC_SIZE = 300
@@ -39,18 +40,6 @@ def build_model():
     return model
 
 
-def example():
-    jpg_data, box, text = dataset_grefexp.example()
-
-    x_img = decode_jpg(jpg_data, box=box)
-    indices = words.indices(text)
-
-    idx = np.random.randint(0, len(indices))
-    x_words = left_pad(indices[:idx][-MAX_WORDS:])
-    y = onehot(indices[idx])
-    return [x_img, x_words], y
-
-
 def training_generator():
     while True:
         BATCH_SIZE = 32
@@ -58,7 +47,7 @@ def training_generator():
         X_words = np.zeros((BATCH_SIZE, MAX_WORDS), dtype=int)
         Y = np.zeros((BATCH_SIZE, VOCABULARY_SIZE))
         for i in range(BATCH_SIZE):
-            x, y = example()
+            x, y = process(*dataset_grefexp.example())
             x_img, x_words = x
             X_img[i] = x_img
             X_words[i] = x_words
@@ -66,8 +55,25 @@ def training_generator():
         yield [X_img, X_words], Y
 
 
+def validation_generator():
+    for k in dataset_grefexp.get_all_keys():
+        x, y = process(*dataset_grefexp.get_annotation_for_key(k))
+        yield x, y
+
+
+def process(jpg_data, box, text):
+    x_img = util.decode_jpg(jpg_data, box=box)
+    indices = words.indices(text)
+    idx = np.random.randint(0, len(indices))
+    x_words = util.left_pad(indices[:idx][-MAX_WORDS:])
+    y = util.onehot(indices[idx])
+    return [x_img, x_words], y
+
+
+def predict(model, X):
+    return util.predict(model, X[0])
+
+
 def demo(model):
-    print(predict(model, decode_jpg('cat.jpg')))
-    print(predict(model, decode_jpg('horse.jpg')))
-    print(predict(model, decode_jpg('dog.jpg')))
-    print(predict(model, decode_jpg('car.jpg')))
+    for f in ['cat.jpg', 'dog.jpg', 'horse.jpg', 'car.jpg']:
+        print(util.predict(model, decode_jpg(f)))

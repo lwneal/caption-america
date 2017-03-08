@@ -1,11 +1,14 @@
-UNKNOWN_IDX = 4092  # for unknown words output "thing"
+START_TOKEN_IDX = 2
+END_TOKEN_IDX = 3
 
 words = open('vocabulary.txt').read().split()
-VOCABULARY_SIZE = len(words)
 vocab = {}
 for i, word in enumerate(words):
     vocab[i] = word
     vocab[word] = i
+
+VOCABULARY_SIZE = len(words)
+UNKNOWN_IDX = vocab['things']
 
 
 def words(indices):
