@@ -17,8 +17,7 @@ import util
 from util import MAX_WORDS
 
 
-# TODO: Hyperparameter optimization
-def build_model(GRU_SIZE=1024, WORDVEC_SIZE=300, ACTIVATION='tanh'):
+def build_model(GRU_SIZE=1024, WORDVEC_SIZE=200, ACTIVATION='relu'):
     resnet = resnet50.ResNet50(include_top=True)
     for layer in resnet.layers:
         layer.trainable = False

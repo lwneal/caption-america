@@ -11,14 +11,12 @@ model_filename = 'model.{}.{}.h5'.format(module_name, int(time.time()))
 if len(sys.argv) > 2:
     model_filename = sys.argv[2]
 
-wordvec_size = int(sys.argv[3])
-activation = sys.argv[4]
 
 if os.path.exists(model_filename):
     from keras.models import load_model
     model = load_model(model_filename)
 else:
-    model = target.build_model(WORDVEC_SIZE=wordvec_size, ACTIVATION=activation)
+    model = target.build_model()
 
 model.compile(optimizer='rmsprop', loss='categorical_crossentropy', metrics=['accuracy'], decay=.001)
 
