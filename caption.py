@@ -37,7 +37,6 @@ def build_model(GRU_SIZE=1024, WORDVEC_SIZE=300, ACTIVATION='tanh'):
     model.add(layers.Merge([image_model, language_model], mode='concat', concat_axis=-1))
     model.add(layers.GRU(GRU_SIZE, return_sequences=False))
     model.add(layers.Dense(words.VOCABULARY_SIZE, activation='softmax'))
-    model.compile(optimizer='rmsprop', loss='categorical_crossentropy', metrics=['accuracy'], decay=.0001, lr=.001)
     return model
 
 

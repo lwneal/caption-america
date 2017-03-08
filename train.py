@@ -11,11 +11,15 @@ model_filename = 'model.{}.{}.h5'.format(module_name, int(time.time()))
 if len(sys.argv) > 2:
     model_filename = sys.argv[2]
 
+DECAY_RATE = float(sys.argv[3])
+
 if os.path.exists(model_filename):
     from keras.models import load_model
     model = load_model(model_filename)
 else:
     model = target.build_model()
+
+model.compile(optimizer='rmsprop', loss='categorical_crossentropy', metrics=['accuracy'], decay=DECAY_RATE)
 
 g = target.training_generator()
 
