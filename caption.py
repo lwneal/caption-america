@@ -19,8 +19,7 @@ from util import MAX_WORDS
 
 
 def build_model(GRU_SIZE=1024, WORDVEC_SIZE=200, ACTIVATION='relu'):
-    input_shape = (224,224,3)
-    resnet = resnet50.ResNet50(include_top=False, input_tensor=layers.Input(input_shape))
+    resnet = resnet50.ResNet50(include_top=False)
     for layer in resnet.layers:
         layer.trainable = False
 
@@ -41,6 +40,9 @@ def build_model(GRU_SIZE=1024, WORDVEC_SIZE=200, ACTIVATION='relu'):
 
     # Visual Context: Concatenated local and global visual context, repeated per word
     visual = layers.merge([global_visual, local_visual], mode='concat')
+
+    # Replace the usual ResNet softmax layer with this one
+    visual = layers.Dense(WORDVEC_SIZE * 2, activation=ACTIVATION)(visual)
     visual = layers.Dense(WORDVEC_SIZE, activation=ACTIVATION)(visual)
     visual = layers.RepeatVector(MAX_WORDS)(visual)
 

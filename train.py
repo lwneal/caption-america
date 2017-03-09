@@ -3,7 +3,10 @@ import sys
 import time
 import importlib
 
-epoch_count = 100
+# The training set contains 50k sentences
+# Each sentence contains ~10 words
+# One epoch should be around 500k, or ~100 iterations
+iter_count = 300
 
 module_name = sys.argv[1]
 module_name = module_name.rstrip('.py')
@@ -21,7 +24,7 @@ model.compile(optimizer='rmsprop', loss='categorical_crossentropy', metrics=['ac
 
 g = target.training_generator()
 
-for i in range(epoch_count):
+for i in range(iter_count):
     samples = 2**12
     model.fit_generator(g, samples_per_epoch=samples, nb_epoch=1)
     print("After training {}k samples:".format(i * samples / 2**10))
