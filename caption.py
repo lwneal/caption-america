@@ -28,6 +28,7 @@ def build_model(GRU_SIZE=1024, WORDVEC_SIZE=200, ACTIVATION='relu'):
     global_visual = layers.Lambda(lambda x: tf.reduce_mean(x, axis=[1,2]))(resnet.output)
 
     # Batch number, y center, x center for each bounding box eg.
+    # NOTE: Coordinates are into the resnet output map, with width/height divided by 32
     #   [[0,    3,  4],
     #    [1,    5,  2],
     #       ...
@@ -68,25 +69,30 @@ def training_generator():
         Y = np.zeros((BATCH_SIZE, words.VOCABULARY_SIZE))
         for i in range(BATCH_SIZE):
             x, y = process(*dataset_grefexp.example())
-            x_img, dy, dx, x_words = x
+            x_img, coords, x_words = x
             X_img[i] = x_img
-            Coords[i] = (i, dy, dx)
+            Coords[i] = (i,) + coords
             X_words[i] = x_words
             Y[i] = y
         yield [X_img, Coords, X_words], Y
 
 
 def process(jpg_data, box, texts):
-    x_img = util.decode_jpg(jpg_data)
+    x_img, box = util.decode_jpg(jpg_data, box)
     text = util.strip(random.choice(texts))
     indices = words.indices(text)
     idx = np.random.randint(0, len(indices))
     x_words = util.left_pad(indices[:idx][-MAX_WORDS:])
     y = util.onehot(indices[idx])
+    coords = coords_from_box(box)
+    return [x_img, coords, x_words], y
+
+
+def coords_from_box(box):
     x0, x1, y0, y1 = box
-    dy = (y0 + y1) / 2 / 32
-    dx = (x0 + x1) / 2 / 32
-    return [x_img, dy, dx, x_words], y
+    dy = (y0 + y1) / 2
+    dx = (x0 + x1) / 2
+    return dy / 32, dx / 32
 
 
 def validation_generator():
