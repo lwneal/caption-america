@@ -98,8 +98,8 @@ def coords_from_box(box):
 def validation_generator():
     for k in dataset_grefexp.get_all_keys():
         jpg_data, box, texts = dataset_grefexp.get_annotation_for_key(k)
-        x, _ = process(jpg_data, box, texts)
-        x_img, _ = x
+        x, y = process(jpg_data, box, texts)
+        x_img, coords, x_words = x
         yield x_img, box, texts
 
 
