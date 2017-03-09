@@ -6,7 +6,7 @@ import importlib
 # The training set contains 50k sentences
 # Each sentence contains ~10 words
 # One epoch should be around 500k, or ~100 iterations
-iter_count = 100
+iter_count = 300
 
 module_name = sys.argv[1]
 module_name = module_name.rstrip('.py')
