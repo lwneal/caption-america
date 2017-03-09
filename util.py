@@ -83,6 +83,19 @@ def show(jpg, box=None):
         os.system('imgcat /tmp/example.jpg')
 
 
+def draw_box(img, box, color=1.0):
+    x0, x1, y0, y1 = (int(val) for val in box)
+    height, width, channels = img.shape
+    x0 = np.clip(x0, 0, width-1)
+    x1 = np.clip(x1, 0, width-1)
+    y0 = np.clip(y0, 0, height-1)
+    y1 = np.clip(y1, 0, height-1)
+    img[y0:y1,x0] = color
+    img[y0:y1,x1] = color
+    img[y0,x0:x1] = color
+    img[y1,x0:x1] = color
+
+
 def strip(text):
     # Remove the START_TOKEN
     text = text.replace('000', '')
