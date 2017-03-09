@@ -19,12 +19,19 @@ from util import MAX_WORDS
 
 
 def build_model(GRU_SIZE=1024, WORDVEC_SIZE=200, ACTIVATION='relu'):
-    resnet = resnet50.ResNet50(include_top=False)
-    for layer in resnet.layers:
+    resnet = resnet50.ResNet50(include_top=True)
+    for layer in resnet.layers[:-1]:
         layer.trainable = False
 
+    dense = resnet.layers.pop()
+    resnet.layers.pop()  # Flatten
+    resnet.layers.pop()  # AveragePooling2D
+
+    resnet_out = resnet.layers[-1].output
+
     # Global Context: Apply mean pooling over the entire feature map
-    global_visual = layers.Lambda(lambda x: tf.reduce_mean(x, axis=[1,2]))(resnet.output)
+    global_visual = layers.Lambda(lambda x: tf.reduce_mean(x, axis=[1,2]))(resnet_out)
+    global_visual = dense(global_visual)
 
     # Batch number, y center, x center for each bounding box eg.
     # NOTE: Coordinates are into the resnet output map, with width/height divided by 32
@@ -36,13 +43,13 @@ def build_model(GRU_SIZE=1024, WORDVEC_SIZE=200, ACTIVATION='relu'):
     coords = layers.Input(shape=(3,), dtype=tf.int32)
 
     # Local Context: Select one (y,x) coordinate per image
-    local_visual = layers.Lambda(lambda x: tf.gather_nd(x, coords))(resnet.output)
+    local_visual = layers.Lambda(lambda x: tf.gather_nd(x, coords))(resnet_out)
+    local_visual = dense(local_visual)
 
     # Visual Context: Concatenated local and global visual context, repeated per word
     visual = layers.merge([global_visual, local_visual], mode='concat')
 
     # Replace the usual ResNet softmax layer with this one
-    visual = layers.Dense(WORDVEC_SIZE * 2, activation=ACTIVATION)(visual)
     visual = layers.Dense(WORDVEC_SIZE, activation=ACTIVATION)(visual)
     visual = layers.RepeatVector(MAX_WORDS)(visual)
 
