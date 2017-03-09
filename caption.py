@@ -120,5 +120,5 @@ def demo(model):
     for f in ['cat.jpg', 'dog.jpg', 'horse.jpg', 'car.jpg']:
         img = util.decode_jpg(f)
         box = (0, img.shape[1], 0, img.shape[0])
-        print("Bounding box: {}".format(box))
+        print("Prediction for {} {}:".format(f, box)),
         print(util.predict(model, img, box))
