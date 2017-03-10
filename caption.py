@@ -144,7 +144,7 @@ def rouge(candidate, references):
 def demo(model):
     for f in ['cat.jpg', 'dog.jpg', 'horse.jpg', 'car.jpg']:
         x_global = util.decode_jpg(f)
-        height, width = x_global.shape
+        height, width, _ = x_global.shape
         box = (width * .25, width * .75, height * .25, height * .75)
         x_local = util.decode_jpg(f, crop_to_box=box)
         print("Prediction for {} {}:".format(f, box)),
