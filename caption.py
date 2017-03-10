@@ -19,16 +19,25 @@ from util import MAX_WORDS
 
 
 def build_model(GRU_SIZE=1024, WORDVEC_SIZE=200, ACTIVATION='relu'):
-    resnet = resnet50.ResNet50(include_top=True)
-    for layer in resnet.layers[:-1]:
-        layer.trainable = False
+    resnet = build_resnet()
 
-    image_model = models.Sequential()
-    image_model.add(resnet)
-    image_model.add(layers.BatchNormalization())
-    image_model.add(layers.Dense(WORDVEC_SIZE, activation=ACTIVATION))
-    image_model.add(layers.BatchNormalization())
-    image_model.add(layers.RepeatVector(MAX_WORDS))
+    input_img_global = layers.Input(shape=(224,224,3))
+    image_global = resnet(input_img_global)
+    image_global = layers.BatchNormalization()(image_global)
+    image_global = layers.Dense(WORDVEC_SIZE, activation=ACTIVATION)(image_global)
+    image_global = layers.BatchNormalization()(image_global)
+    image_global = layers.RepeatVector(MAX_WORDS)(image_global)
+
+    model_global = models.Model(input=input_img_global, output=image_global)
+
+    input_img_local = layers.Input(shape=(224,224,3))
+    image_local = resnet(input_img_local)
+    image_local = layers.BatchNormalization()(image_local)
+    image_local = layers.Dense(WORDVEC_SIZE, activation=ACTIVATION)(image_local)
+    image_local = layers.BatchNormalization()(image_local)
+    image_local = layers.RepeatVector(MAX_WORDS)(image_local)
+
+    model_local = models.Model(input=input_img_local, output=image_local)
 
     language_model = models.Sequential()
     language_model.add(layers.Embedding(words.VOCABULARY_SIZE, WORDVEC_SIZE, input_length=MAX_WORDS, mask_zero=True))
@@ -37,42 +46,51 @@ def build_model(GRU_SIZE=1024, WORDVEC_SIZE=200, ACTIVATION='relu'):
     language_model.add(layers.BatchNormalization())
     language_model.add(layers.TimeDistributed(layers.Dense(WORDVEC_SIZE, activation=ACTIVATION)))
     language_model.add(layers.BatchNormalization())
-
+    
     model = models.Sequential()
-    model.add(layers.Merge([image_model, language_model], mode='concat', concat_axis=-1))
+    model.add(layers.Merge([model_global, model_local, language_model], mode='concat', concat_axis=-1))
     model.add(layers.GRU(GRU_SIZE, return_sequences=False))
     model.add(layers.BatchNormalization())
     model.add(layers.Dense(words.VOCABULARY_SIZE, activation='softmax'))
+
     return model
 
+def build_resnet():
+    resnet = resnet50.ResNet50(include_top=True)
+    for layer in resnet.layers[:-1]:
+        layer.trainable = False
+    return resnet
 
 # TODO: Move batching out to the generic runner
 def training_generator():
     while True:
         BATCH_SIZE = 32
-        X_img = np.zeros((BATCH_SIZE,224,224,3))
+        X_global = np.zeros((BATCH_SIZE,224,224,3))
+        X_local = np.zeros((BATCH_SIZE,224,224,3))
         X_words = np.zeros((BATCH_SIZE, MAX_WORDS), dtype=int)
-        Coords = np.zeros((BATCH_SIZE, 3), dtype=int)
+        #Coords = np.zeros((BATCH_SIZE, 3), dtype=int)
         Y = np.zeros((BATCH_SIZE, words.VOCABULARY_SIZE))
         for i in range(BATCH_SIZE):
             x, y = process(*dataset_grefexp.example())
-            x_img, coords, x_words = x
-            X_img[i] = x_img
-            Coords[i] = (i,) + coords
+            x_global, x_local, x_words = x
+            X_global[i] = x_global
+            X_local[i] = x_local
+            #Coords[i] = (i,) + coords
             X_words[i] = x_words
             Y[i] = y
-        yield [X_img, X_words], Y
+        yield [X_global, X_local, X_words], Y
 
 
 def process(jpg_data, box, texts):
-    x_img, box = util.decode_jpg(jpg_data, box)
+    x_global = util.decode_jpg(jpg_data)
+    x_local = util.decode_jpg(jpg_data, crop_to_box=box)
     text = util.strip(random.choice(texts))
     indices = words.indices(text)
     idx = np.random.randint(0, len(indices))
     x_words = util.left_pad(indices[:idx][-MAX_WORDS:])
     y = util.onehot(indices[idx])
-    coords = coords_from_box(box)
-    return [x_img, coords, x_words], y
+    #coords = coords_from_box(box)
+    return [x_global, x_local, x_words], y
 
 
 def coords_from_box(box):
@@ -86,12 +104,12 @@ def validation_generator():
     for k in dataset_grefexp.get_all_keys():
         jpg_data, box, texts = dataset_grefexp.get_annotation_for_key(k)
         x, y = process(jpg_data, box, texts)
-        x_img, coords, x_words = x
-        yield x_img, box, texts
+        x_global, x_local, x_words = x
+        yield x_global, x_local, box, texts
 
 
-def evaluate(model, x_img, box, texts):
-    candidate = util.strip(predict(model, x_img, box))
+def evaluate(model, x_global, x_local, box, texts):
+    candidate = util.strip(predict(model, x_global, x_local, box))
     references = map(util.strip, texts)
     print("[1F[K{} ({})".format(candidate, references[0]))
     scores = {}
@@ -100,12 +118,12 @@ def evaluate(model, x_img, box, texts):
     return scores
 
 
-def predict(model, img, box, references=None):
+def predict(model, x_global, x_local, box, references=None):
     indices = util.left_pad([])
     #x0, x1, y0, y1 = box
     #coords = [0, (y0 + y1) / 2, (x0 + x1) / 2]
     for i in range(MAX_WORDS):
-        preds = model.predict([util.expand(img), util.expand(indices)])
+        preds = model.predict([util.expand(x_global), util.expand(x_local), util.expand(indices)])
         indices = np.roll(indices, -1)
         indices[-1] = np.argmax(preds[0], axis=-1)
         if references:
@@ -125,7 +143,9 @@ def rouge(candidate, references):
 
 def demo(model):
     for f in ['cat.jpg', 'dog.jpg', 'horse.jpg', 'car.jpg']:
-        img = util.decode_jpg(f)
-        box = (0, img.shape[1], 0, img.shape[0])
+        x_global = util.decode_jpg(f)
+        height, width = x_global.shape
+        box = (width * .25, width * .75, height * .25, height * .75)
+        x_local = util.decode_jpg(f, crop_to_box=box)
         print("Prediction for {} {}:".format(f, box)),
-        print(predict(model, img, box))
+        print(predict(model, x_global, x_local, box))

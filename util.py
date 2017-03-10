@@ -78,7 +78,10 @@ def left_pad(indices):
 
 
 def show(jpg, box=None):
-    pixels = decode_jpg(jpg, preprocess=False)
+    if type(jpg) == type(np.array([])):
+        pixels = jpg
+    else:
+        pixels = decode_jpg(jpg, preprocess=False)
     if box:
         draw_box(pixels, box)
     with open('/tmp/example.jpg', 'w') as fp:
