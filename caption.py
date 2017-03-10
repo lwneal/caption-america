@@ -18,13 +18,13 @@ import util
 from util import MAX_WORDS
 
 
-def build_model(GRU_SIZE=1024, WORDVEC_SIZE=200, ACTIVATION='relu'):
+def build_model(GRU_SIZE=1024, WORDVEC_SIZE=400, ACTIVATION='relu'):
     resnet = build_resnet()
 
     input_img_global = layers.Input(shape=(224,224,3))
     image_global = resnet(input_img_global)
     image_global = layers.BatchNormalization()(image_global)
-    image_global = layers.Dense(WORDVEC_SIZE, activation=ACTIVATION)(image_global)
+    image_global = layers.Dense(WORDVEC_SIZE/2, activation=ACTIVATION)(image_global)
     image_global = layers.BatchNormalization()(image_global)
     image_global = layers.RepeatVector(MAX_WORDS)(image_global)
 
@@ -33,7 +33,7 @@ def build_model(GRU_SIZE=1024, WORDVEC_SIZE=200, ACTIVATION='relu'):
     input_img_local = layers.Input(shape=(224,224,3))
     image_local = resnet(input_img_local)
     image_local = layers.BatchNormalization()(image_local)
-    image_local = layers.Dense(WORDVEC_SIZE, activation=ACTIVATION)(image_local)
+    image_local = layers.Dense(WORDVEC_SIZE/2, activation=ACTIVATION)(image_local)
     image_local = layers.BatchNormalization()(image_local)
     image_local = layers.RepeatVector(MAX_WORDS)(image_local)
 
