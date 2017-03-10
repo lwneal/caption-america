@@ -189,7 +189,8 @@ def ResNet50(include_top=True, weights='imagenet',
     if include_top:
         x = AveragePooling2D((7, 7), name='avg_pool')(x)
         x = Flatten()(x)
-        x = Dense(1000, activation='softmax', name='fc1000')(x)
+        # NOTE: No activation, I'm using this as an embedding
+        x = Dense(1000, name='fc1000')(x)
 
     model = Model(img_input, x)
 
