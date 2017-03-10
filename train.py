@@ -20,7 +20,7 @@ model = target.build_model()
 if os.path.exists(model_filename):
     model.load_weights(model_filename)
 
-model.compile(optimizer='rmsprop', loss='categorical_crossentropy', metrics=['accuracy'], decay=.001)
+model.compile(optimizer='adam', loss='categorical_crossentropy', metrics=['accuracy'], decay=.01)
 
 g = target.training_generator()
 
