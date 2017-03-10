@@ -26,22 +26,21 @@ def build_model(GRU_SIZE=1024, WORDVEC_SIZE=200, ACTIVATION='relu'):
     image_model = models.Sequential()
     image_model.add(resnet)
     image_model.add(layers.BatchNormalization())
-    image_model.add(layers.Dense(WORDVEC_SIZE, activation=ACTIVATION))
+    image_model.add(layers.Dense(WORDVEC_SIZE))
     image_model.add(layers.BatchNormalization())
+    image_model.add(layers.Activation(ACTIVATION))
     image_model.add(layers.RepeatVector(MAX_WORDS))
 
     language_model = models.Sequential()
     language_model.add(layers.Embedding(words.VOCABULARY_SIZE, WORDVEC_SIZE, input_length=MAX_WORDS, mask_zero=True))
-    language_model.add(layers.BatchNormalization())
     language_model.add(layers.GRU(GRU_SIZE, return_sequences=True))
+    language_model.add(layers.TimeDistributed(layers.Dense(WORDVEC_SIZE)))
     language_model.add(layers.BatchNormalization())
-    language_model.add(layers.TimeDistributed(layers.Dense(WORDVEC_SIZE, activation=ACTIVATION)))
-    language_model.add(layers.BatchNormalization())
+    language_model.add(layers.TimeDistributed(layers.Activation(ACTIVATION)))
 
     model = models.Sequential()
     model.add(layers.Merge([image_model, language_model], mode='concat', concat_axis=-1))
     model.add(layers.GRU(GRU_SIZE, return_sequences=False))
-    model.add(layers.BatchNormalization())
     model.add(layers.Dense(words.VOCABULARY_SIZE, activation='softmax'))
     return model
 
