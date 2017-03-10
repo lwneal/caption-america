@@ -29,3 +29,6 @@ while True:
     print("After training {}k samples:".format(4 * i))
     model.save(model_filename)
     target.demo(model)
+    if i == 3600:
+        break
+print("Training complete. BLEU-2 score should be ~.136")
