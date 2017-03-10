@@ -20,13 +20,13 @@ model = target.build_model()
 if os.path.exists(model_filename):
     model.load_weights(model_filename)
 
-model.compile(optimizer='adam', loss='categorical_crossentropy', metrics=['accuracy'], decay=.01)
+model.compile(optimizer='adam', loss='categorical_crossentropy', metrics=['accuracy'], decay=.01, lr=.001)
 
 g = target.training_generator()
 
 for i in range(iter_count):
     samples = 2**12
-    model.fit_generator(g, samples_per_epoch=samples, nb_epoch=1)
-    print("After training {}k samples:".format(i * samples / 2**10))
-    model.save_weights(model_filename)
+    print("Trained {}k samples:".format(i * samples / 2**10))
     target.demo(model)
+    model.fit_generator(g, samples_per_epoch=samples, nb_epoch=1)
+    model.save_weights(model_filename)
