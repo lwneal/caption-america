@@ -20,7 +20,7 @@ from util import MAX_WORDS
 
 def build_model(GRU_SIZE=1024, WORDVEC_SIZE=200, ACTIVATION='relu'):
     resnet = resnet50.ResNet50(include_top=True)
-    for layer in resnet.layers[-1]:
+    for layer in resnet.layers[:-1]:
         layer.trainable = False
 
     image_model = models.Sequential()
@@ -55,7 +55,7 @@ def training_generator():
             Coords[i] = (i,) + coords
             X_words[i] = x_words
             Y[i] = y
-        yield [X_img, Coords, X_words], Y
+        yield [X_img, X_words], Y
 
 
 def process(jpg_data, box, texts):
@@ -85,13 +85,27 @@ def validation_generator():
 
 
 def evaluate(model, x_img, box, texts):
-    candidate = util.strip(util.predict(model, x_img, box))
+    candidate = util.strip(predict(model, x_img, box))
     references = map(util.strip, texts)
     print("[1F[K{} ({})".format(candidate, references[0]))
     scores = {}
     scores['bleu1'], scores['bleu2'] = bleu(candidate, references)
     scores['rouge'] = rouge(candidate, references)
     return scores
+
+
+def predict(model, img, box, references=None):
+    indices = util.left_pad([])
+    #x0, x1, y0, y1 = box
+    #coords = [0, (y0 + y1) / 2, (x0 + x1) / 2]
+    for i in range(MAX_WORDS):
+        preds = model.predict([util.expand(img), util.expand(indices)])
+        indices = np.roll(indices, -1)
+        indices[-1] = np.argmax(preds[0], axis=-1)
+        if references:
+            predicted_text = words.words(indices)
+            print("{} {}".format(bleu(candidate, references), predicted_text))
+    return words.words(indices)
 
 
 def bleu(candidate, references):
@@ -108,4 +122,4 @@ def demo(model):
         img = util.decode_jpg(f)
         box = (0, img.shape[1], 0, img.shape[0])
         print("Prediction for {} {}:".format(f, box)),
-        print(util.predict(model, img, box))
+        print(predict(model, img, box))

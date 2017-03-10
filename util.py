@@ -76,16 +76,6 @@ def left_pad(indices):
     return res
 
 
-def predict(model, img, box):
-    indices = left_pad([])
-    x0, x1, y0, y1 = box
-    coords = [0, (y0 + y1) / 2, (x0 + x1) / 2]
-    for _ in range(MAX_WORDS):
-        preds = model.predict([expand(img), expand(coords), expand(indices)])
-        indices = np.roll(indices, -1)
-        indices[-1] = np.argmax(preds[0], axis=-1)
-    return words.words(indices)
-
 
 def show(jpg, box=None):
     pixels = decode_jpg(jpg, preprocess=False)
