@@ -32,6 +32,7 @@ def build_model(GRU_SIZE=1024, WORDVEC_SIZE=200, ACTIVATION='relu'):
     # Global Context: Apply mean pooling over the entire feature map
     global_visual = layers.Lambda(lambda x: tf.reduce_mean(x, axis=[1,2]))(resnet_out)
     global_visual = dense(global_visual)
+    global_visual = layers.BatchNormalization()(global_visual)
 
     # Batch number, y center, x center for each bounding box eg.
     # NOTE: Coordinates are into the resnet output map, with width/height divided by 32
@@ -45,24 +46,30 @@ def build_model(GRU_SIZE=1024, WORDVEC_SIZE=200, ACTIVATION='relu'):
     # Local Context: Select one (y,x) coordinate per image
     local_visual = layers.Lambda(lambda x: tf.gather_nd(x, coords))(resnet_out)
     local_visual = dense(local_visual)
+    local_visual = layers.BatchNormalization()(local_visual)
 
     # Visual Context: Concatenated local and global visual context, repeated per word
     visual = layers.merge([global_visual, local_visual], mode='concat')
 
     # Replace the usual ResNet softmax layer with this one
     visual = layers.Dense(WORDVEC_SIZE, activation=ACTIVATION)(visual)
+    visual = layers.BatchNormalization()(visual)
     visual = layers.RepeatVector(MAX_WORDS)(visual)
 
     image_model = models.Model(input=[resnet.input, coords], output=visual)
 
     language_model = models.Sequential()
     language_model.add(layers.Embedding(words.VOCABULARY_SIZE, WORDVEC_SIZE, input_length=MAX_WORDS, mask_zero=True))
+    language_model.add(layers.BatchNormalization())
     language_model.add(layers.GRU(GRU_SIZE, return_sequences=True))
+    language_model.add(layers.BatchNormalization())
     language_model.add(layers.TimeDistributed(layers.Dense(WORDVEC_SIZE, activation=ACTIVATION)))
     
     model = models.Sequential()
     model.add(layers.Merge([image_model, language_model], mode='concat', concat_axis=-1))
+    model.add(layers.BatchNormalization())
     model.add(layers.GRU(GRU_SIZE, return_sequences=False))
+    model.add(layers.BatchNormalization())
     model.add(layers.Dense(words.VOCABULARY_SIZE, activation='softmax'))
 
     return model
