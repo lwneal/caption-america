@@ -18,7 +18,7 @@ import util
 from util import MAX_WORDS
 
 
-def build_model(GRU_SIZE=1024, WORDVEC_SIZE=400, ACTIVATION='relu'):
+def build_model(GRU_SIZE=1024, WORDVEC_SIZE=300, ACTIVATION='relu'):
     resnet = build_resnet()
 
     input_img_global = layers.Input(shape=(224,224,3))
