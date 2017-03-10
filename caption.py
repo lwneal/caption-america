@@ -138,13 +138,17 @@ def predict(model, x_global, x_local, x_ctx, box, temperature=.0):
     indices = util.left_pad([])
     #x0, x1, y0, y1 = box
     #coords = [0, (y0 + y1) / 2, (x0 + x1) / 2]
-    scores = []
+    likelihoods = []
     for i in range(MAX_WORDS):
         preds = model.predict([util.expand(x_global), util.expand(x_local), util.expand(indices), util.expand(x_ctx)])
-        scores.append(preds.max())
+        preds = preds[0]
         indices = np.roll(indices, -1)
-        indices[-1] = sample(preds[0], temperature)
-    return words.words(indices), np.mean(scores)
+        if temperature > 0:
+            indices[-1] = sample(preds, temperature)
+        else:
+            indices[-1] = np.argmax(preds, axis=-1)
+        likelihoods.append(preds[indices[-1]])
+    return words.words(indices), np.mean(likelihoodsscores)
 
 
 def sample(preds, temperature=1.0):
