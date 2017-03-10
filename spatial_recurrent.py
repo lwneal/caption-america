@@ -1,6 +1,6 @@
+import numpy as np
 import tensorflow as tf
 from keras import layers, models
-import numpy as np
 from keras.layers import TimeDistributed as TD
 
 BATCH_SIZE = 1
@@ -48,3 +48,23 @@ rando = np.random.rand(BATCH_SIZE, IMG_HEIGHT, IMG_WIDTH,3)
 rando = np.expand_dims(rando, axis=0)
 preds = moo.predict(rando)
 print("Got output preds shape {}".format(preds.shape))
+
+
+
+X = np.zeros((1, 1, 11, 11, 3))
+Y = np.zeros((1, 1, 11, 11, 1))
+
+X[:,:,1,0,:] = 1.0
+Y[:,:,:,0,:] = 1.0
+Y[:,:,1,:,:] = 1.0
+
+print("Input X:")
+print(X[0,0,:,:,0])
+
+print("Target Y:")
+print(Y[0,0,:,:,0])
+
+moo.compile(optimizer='adam', loss='mae')
+moo.train_on_batch(X,Y)
+moo.fit(X, Y, nb_epoch=1000)
+preds = moo.predict(X)
