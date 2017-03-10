@@ -20,13 +20,10 @@ if os.path.exists(model_filename):
 g = target.validation_generator()
 scores = {}
 for args in g:
-    s = target.evaluate(model, *args)
-    for k in s:
-        if k not in scores:
-            scores[k] = []
-        scores[k].append(s[k])
-    means = {k: np.mean(scores[k]) for k in scores}
-    print('\n[K{} {}'.format(len(scores[k]), means)),
+    for i in range(10):
+        s = target.evaluate(model, *args, temperature=.1*i)
+        print s
+    exit()
 
 for k in scores:
     from scipy import stats

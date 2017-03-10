@@ -108,28 +108,40 @@ def validation_generator():
         yield x_global, x_local, box, texts
 
 
-def evaluate(model, x_global, x_local, box, texts):
-    candidate = util.strip(predict(model, x_global, x_local, box))
+def evaluate(model, x_global, x_local, box, texts, temperature=.0):
+    candidate, likelihood = predict(model, x_global, x_local, box, temperature)
+    candidate = util.strip(candidate)
     references = map(util.strip, texts)
-    print("[1F[K{} ({})".format(candidate, references[0]))
+    print("{} {} ({})".format(likelihood, candidate, references[0]))
     scores = {}
     scores['bleu1'], scores['bleu2'] = bleu(candidate, references)
     scores['rouge'] = rouge(candidate, references)
+    scores['likelihood'] = likelihood
     return scores
 
 
-def predict(model, x_global, x_local, box, references=None):
+def predict(model, x_global, x_local, box, temperature=.0):
     indices = util.left_pad([])
     #x0, x1, y0, y1 = box
     #coords = [0, (y0 + y1) / 2, (x0 + x1) / 2]
+    scores = []
     for i in range(MAX_WORDS):
         preds = model.predict([util.expand(x_global), util.expand(x_local), util.expand(indices)])
+        scores.append(preds.max())
         indices = np.roll(indices, -1)
-        indices[-1] = np.argmax(preds[0], axis=-1)
-        if references:
-            predicted_text = words.words(indices)
-            print("{} {}".format(bleu(candidate, references), predicted_text))
-    return words.words(indices)
+        #indices[-1] = np.argmax(preds[0], axis=-1)
+        indices[-1] = sample(preds[0], temperature=.3)
+    return words.words(indices), np.mean(scores)
+
+
+def sample(preds, temperature=1.0):
+    # helper function to sample an index from a probability array
+    preds = np.asarray(preds).astype('float64')
+    preds = np.log(preds) / temperature
+    exp_preds = np.exp(preds)
+    preds = exp_preds / np.sum(exp_preds)
+    probas = np.random.multinomial(1, preds, 1)
+    return np.argmax(probas)
 
 
 def bleu(candidate, references):
