@@ -1,3 +1,4 @@
+import gpumemory
 import numpy as np
 import os
 import random
@@ -18,13 +19,11 @@ import util
 from util import MAX_WORDS
 
 
-def build_model(GRU_SIZE=1024, WORDVEC_SIZE=400, ACTIVATION='relu'):
+def build_model(LSTM_SIZE=1024, EMBED_SIZE=1024, ACTIVATION='relu'):
     resnet = build_resnet()
 
     input_img_global = layers.Input(shape=(224,224,3))
     image_global = resnet(input_img_global)
-    image_global = layers.BatchNormalization()(image_global)
-    image_global = layers.Dense(WORDVEC_SIZE/2, activation=ACTIVATION)(image_global)
     image_global = layers.BatchNormalization()(image_global)
     image_global = layers.RepeatVector(MAX_WORDS)(image_global)
 
@@ -32,8 +31,6 @@ def build_model(GRU_SIZE=1024, WORDVEC_SIZE=400, ACTIVATION='relu'):
 
     input_img_local = layers.Input(shape=(224,224,3))
     image_local = resnet(input_img_local)
-    image_local = layers.BatchNormalization()(image_local)
-    image_local = layers.Dense(WORDVEC_SIZE/2, activation=ACTIVATION)(image_local)
     image_local = layers.BatchNormalization()(image_local)
     image_local = layers.RepeatVector(MAX_WORDS)(image_local)
 
@@ -47,16 +44,12 @@ def build_model(GRU_SIZE=1024, WORDVEC_SIZE=400, ACTIVATION='relu'):
     context_model = models.Model(input=input_context_vector, output=ctx)
 
     language_model = models.Sequential()
-    language_model.add(layers.Embedding(words.VOCABULARY_SIZE, WORDVEC_SIZE, input_length=MAX_WORDS, mask_zero=True))
+    language_model.add(layers.Embedding(words.VOCABULARY_SIZE, EMBED_SIZE, input_length=MAX_WORDS, mask_zero=True))
     language_model.add(layers.BatchNormalization())
-    language_model.add(layers.GRU(GRU_SIZE, return_sequences=True))
-    language_model.add(layers.BatchNormalization())
-    language_model.add(layers.TimeDistributed(layers.Dense(WORDVEC_SIZE, activation=ACTIVATION)))
-    language_model.add(layers.BatchNormalization())
-    
+
     model = models.Sequential()
     model.add(layers.Merge([model_global, model_local, language_model, context_model], mode='concat', concat_axis=-1))
-    model.add(layers.GRU(GRU_SIZE, return_sequences=False))
+    model.add(layers.LSTM(LSTM_SIZE, return_sequences=False))
     model.add(layers.BatchNormalization())
     model.add(layers.Dense(words.VOCABULARY_SIZE, activation='softmax'))
 
@@ -64,6 +57,7 @@ def build_model(GRU_SIZE=1024, WORDVEC_SIZE=400, ACTIVATION='relu'):
 
 def build_resnet():
     resnet = resnet50.ResNet50(include_top=True)
+    # Only the last layer (1000 dim) is trainable
     for layer in resnet.layers[:-1]:
         layer.trainable = False
     return resnet

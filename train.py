@@ -6,7 +6,8 @@ import importlib
 # The training set contains 50k sentences
 # Each sentence contains ~10 words
 # One epoch should be around 500k, or ~100 iterations
-iter_count = 1000
+# We want to train for ten or twenty epochs
+iter_count = 4000
 
 module_name = sys.argv[1]
 module_name = module_name.rstrip('.py')
@@ -28,5 +29,7 @@ for i in range(iter_count):
     samples = 2**12
     print("Trained {}k samples:".format(i * samples / 2**10))
     target.demo(model)
-    model.fit_generator(g, samples_per_epoch=samples, nb_epoch=1)
+    tb_callback = keras.callbacks.TensorBoard(log_dir='/home/nealla/tensorboard', 
+            histogram_freq=0, write_graph=True, write_images=True)
+    model.fit_generator(g, samples_per_epoch=samples, nb_epoch=1, callbacks=[tb_callback])
     model.save_weights(model_filename)
