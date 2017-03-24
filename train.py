@@ -28,5 +28,5 @@ for i in range(iter_count):
     samples = 2**12
     print("Trained {}k samples:".format(i * samples / 2**10))
     target.demo(model)
-    model.fit_generator(g, samples_per_epoch=samples, nb_epoch=1)
+    model.fit_generator(g, steps_per_epoch=100, nb_epoch=1)
     model.save_weights(model_filename)

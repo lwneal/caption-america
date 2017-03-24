@@ -21,6 +21,7 @@ from util import MAX_WORDS
 def build_model(GRU_SIZE=1024, WORDVEC_SIZE=300, ACTIVATION='relu'):
     resnet = build_resnet()
 
+    # Global Image featuers (convnet output for the whole image)
     input_img_global = layers.Input(shape=(224,224,3))
     image_global = resnet(input_img_global)
     image_global = layers.BatchNormalization()(image_global)
@@ -28,8 +29,8 @@ def build_model(GRU_SIZE=1024, WORDVEC_SIZE=300, ACTIVATION='relu'):
     image_global = layers.BatchNormalization()(image_global)
     image_global = layers.RepeatVector(MAX_WORDS)(image_global)
 
-    model_global = models.Model(input=input_img_global, output=image_global)
 
+    # Local Image features (convnet output inside the bounding box)
     input_img_local = layers.Input(shape=(224,224,3))
     image_local = resnet(input_img_local)
     image_local = layers.BatchNormalization()(image_local)
@@ -37,36 +38,43 @@ def build_model(GRU_SIZE=1024, WORDVEC_SIZE=300, ACTIVATION='relu'):
     image_local = layers.BatchNormalization()(image_local)
     image_local = layers.RepeatVector(MAX_WORDS)(image_local)
 
-    model_local = models.Model(input=input_img_local, output=image_local)
 
+    # Context Vector input
     # normalized to [0,1] the values:
     # left, top, right, bottom, (box area / image area)
-    input_context_vector = layers.Input(shape=(5,))
-    ctx = layers.BatchNormalization()(input_context_vector)
+    input_ctx = layers.Input(shape=(5,))
+    ctx = layers.BatchNormalization()(input_ctx)
     ctx = layers.RepeatVector(MAX_WORDS)(ctx)
-    context_model = models.Model(input=input_context_vector, output=ctx)
 
     language_model = models.Sequential()
-    language_model.add(layers.Embedding(words.VOCABULARY_SIZE, WORDVEC_SIZE, input_length=MAX_WORDS, mask_zero=True))
-    language_model.add(layers.BatchNormalization())
-    language_model.add(layers.GRU(GRU_SIZE, return_sequences=True))
-    language_model.add(layers.BatchNormalization())
-    language_model.add(layers.TimeDistributed(layers.Dense(WORDVEC_SIZE, activation=ACTIVATION)))
-    language_model.add(layers.BatchNormalization())
-    
-    model = models.Sequential()
-    model.add(layers.Merge([model_global, model_local, language_model, context_model], mode='concat', concat_axis=-1))
-    model.add(layers.GRU(GRU_SIZE, return_sequences=False))
-    model.add(layers.BatchNormalization())
-    model.add(layers.Dense(words.VOCABULARY_SIZE, activation='softmax'))
 
-    return model
+    input_words = layers.Input(shape=(MAX_WORDS,), dtype='int32')
+    language = layers.Embedding(words.VOCABULARY_SIZE, WORDVEC_SIZE, input_length=MAX_WORDS)(input_words)
+    language = layers.BatchNormalization()(language)
+    language = layers.GRU(GRU_SIZE, return_sequences=True)(language)
+    language = layers.BatchNormalization()(language)
+    language = layers.TimeDistributed(layers.Dense(WORDVEC_SIZE, activation=ACTIVATION))(language)
+    language = layers.BatchNormalization()(language)
+
+    # Problem with Keras 2: 
+    # TypeError: Tensors in list passed to 'values' of 'ConcatV2' Op have types [uint8, uint8, bool, uint8] that don't all match.
+    # Masking doesn't work along with concatenation.
+    # How do I get mask_zero=True working in the embed layer?
+
+    x = layers.concatenate([image_global, image_local, ctx, language])
+    x = layers.GRU(GRU_SIZE)(x)
+    x = layers.BatchNormalization()(x)
+    x = layers.Dense(words.VOCABULARY_SIZE, activation='softmax')(x)
+
+    return models.Model(inputs=[input_img_global, input_img_local, input_words, input_ctx], outputs=x)
+
 
 def build_resnet():
     resnet = resnet50.ResNet50(include_top=True)
     for layer in resnet.layers[:-1]:
         layer.trainable = False
     return resnet
+
 
 # TODO: Move batching out to the generic runner
 def training_generator():
@@ -148,7 +156,7 @@ def predict(model, x_global, x_local, x_ctx, box, temperature=.0):
         else:
             indices[-1] = np.argmax(preds, axis=-1)
         likelihoods.append(preds[indices[-1]])
-    return words.words(indices), np.mean(likelihoodsscores)
+    return words.words(indices), np.mean(likelihoods)
 
 
 def sample(preds, temperature=1.0):
