@@ -17,12 +17,17 @@ import rouge_scorer
 import util
 from util import MAX_WORDS
 
+IMG_WIDTH = 224
+IMG_HEIGHT = 224
+IMG_CHANNELS = 3
+IMG_SHAPE = (IMG_HEIGHT, IMG_WIDTH, IMG_CHANNELS)
+
 
 def build_model(GRU_SIZE=1024, WORDVEC_SIZE=300, ACTIVATION='relu'):
     resnet = build_resnet()
 
     # Global Image featuers (convnet output for the whole image)
-    input_img_global = layers.Input(shape=(224,224,3))
+    input_img_global = layers.Input(shape=IMG_SHAPE)
     image_global = resnet(input_img_global)
     image_global = layers.BatchNormalization()(image_global)
     image_global = layers.Dense(WORDVEC_SIZE/2, activation=ACTIVATION)(image_global)
@@ -31,7 +36,7 @@ def build_model(GRU_SIZE=1024, WORDVEC_SIZE=300, ACTIVATION='relu'):
 
 
     # Local Image features (convnet output inside the bounding box)
-    input_img_local = layers.Input(shape=(224,224,3))
+    input_img_local = layers.Input(shape=IMG_SHAPE)
     image_local = resnet(input_img_local)
     image_local = layers.BatchNormalization()(image_local)
     image_local = layers.Dense(WORDVEC_SIZE/2, activation=ACTIVATION)(image_local)
@@ -80,8 +85,8 @@ def build_resnet():
 def training_generator():
     while True:
         BATCH_SIZE = 32
-        X_global = np.zeros((BATCH_SIZE,224,224,3))
-        X_local = np.zeros((BATCH_SIZE,224,224,3))
+        X_global = np.zeros((BATCH_SIZE, IMG_HEIGHT, IMG_WIDTH, IMG_CHANNELS))
+        X_local = np.zeros((BATCH_SIZE, IMG_HEIGHT, IMG_WIDTH, IMG_CHANNELS))
         X_words = np.zeros((BATCH_SIZE, MAX_WORDS), dtype=int)
         X_ctx = np.zeros((BATCH_SIZE,5))
         Y = np.zeros((BATCH_SIZE, words.VOCABULARY_SIZE))
@@ -109,15 +114,14 @@ def process(jpg_data, box, texts):
     return [x_global, x_local, x_words, x_ctx], y
 
 
-# TODO: don't assume image is 224x224
 def img_ctx(box):
     x0, x1, y0, y1 = box
-    left = x0 / 224.
-    right = x1 / 224.
-    top = y0 / 224.
-    bottom = y1 / 224.
+    left = float(x0) / IMG_WIDTH
+    right = float(x1) / IMG_WIDTH
+    top = float(y0) / IMG_HEIGHT
+    bottom = float(y1) / IMG_HEIGHT
     box_area = float(x1 - x0) * (y1 - y0)
-    img_area = 224 * 224.
+    img_area = IMG_HEIGHT * IMG_WIDTH
     x_ctx = np.array([left, top, right, bottom, box_area/img_area])
     return x_ctx
 
