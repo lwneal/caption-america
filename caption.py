@@ -8,7 +8,7 @@ from keras import models, layers
 from PIL import Image
 from StringIO import StringIO
 
-import resnet50
+from keras.applications import resnet50
 import tensorflow as tf
 import words
 import dataset_grefexp
@@ -22,6 +22,8 @@ IMG_HEIGHT = 224
 IMG_CHANNELS = 3
 IMG_SHAPE = (IMG_HEIGHT, IMG_WIDTH, IMG_CHANNELS)
 
+# Learn the softmax layer and the conv/batchnorm behind it
+LEARNABLE_RESNET_LAYERS = 7
 
 def build_model(GRU_SIZE=1024, WORDVEC_SIZE=300, ACTIVATION='relu'):
     resnet = build_resnet()
@@ -76,7 +78,7 @@ def build_model(GRU_SIZE=1024, WORDVEC_SIZE=300, ACTIVATION='relu'):
 
 def build_resnet():
     resnet = resnet50.ResNet50(include_top=True)
-    for layer in resnet.layers[:-1]:
+    for layer in resnet.layers[:-LEARNABLE_RESNET_LAYERS]:
         layer.trainable = False
     return resnet
 
