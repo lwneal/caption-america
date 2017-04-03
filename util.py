@@ -8,7 +8,10 @@ import words
 from words import VOCABULARY_SIZE
 
 
-IMG_SHAPE = (224,224)
+IMG_WIDTH = 384
+IMG_HEIGHT = 384
+IMG_CHANNELS = 3
+IMG_SHAPE = (IMG_HEIGHT, IMG_WIDTH, IMG_CHANNELS)
 MAX_WORDS = 10
 
 
@@ -38,7 +41,7 @@ def decode_jpg(jpg, box=None, crop_to_box=None, preprocess=True):
         x0, x1, y0, y1 = crop_to_box
         img = img.crop((x0,y0,x1,y1))
     if preprocess:
-        img = img.resize(IMG_SHAPE)
+        img = img.resize((IMG_WIDTH, IMG_HEIGHT))
     pixels = np.array(img).astype(float)
     if preprocess:
         pixels = imagenet_process(pixels)

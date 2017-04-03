@@ -16,11 +16,7 @@ import bleu_scorer
 import rouge_scorer
 import util
 from util import MAX_WORDS
-
-IMG_WIDTH = 224
-IMG_HEIGHT = 224
-IMG_CHANNELS = 3
-IMG_SHAPE = (IMG_HEIGHT, IMG_WIDTH, IMG_CHANNELS)
+from util import IMG_HEIGHT, IMG_WIDTH, IMG_SHAPE, IMG_CHANNELS
 
 # Learn the softmax layer and the conv/batchnorm behind it
 LEARNABLE_RESNET_LAYERS = 7
