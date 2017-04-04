@@ -136,7 +136,7 @@ def evaluate(model, x_global, x_local, x_ctx, box, texts, temperature=.0):
     candidate, likelihood = predict(model, x_global, x_local, x_ctx, box, temperature)
     candidate = util.strip(candidate)
     references = map(util.strip, texts)
-    print("{} {} ({})".format(likelihood, candidate, references[0]))
+    #print("{} {} ({})".format(likelihood, candidate, references[0]))
     scores = {}
     scores['bleu1'], scores['bleu2'] = bleu(candidate, references)
     scores['rouge'] = rouge(candidate, references)
