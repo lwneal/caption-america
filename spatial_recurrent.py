@@ -80,19 +80,12 @@ def build_model():
     x = layers.Conv2D(CRN_INPUT_SIZE, (1,1))(x)
 
     # Statefully scan the image in each of four directions
-    cgru = SpatialCGRU(CRN_OUTPUT_SIZE, return_sequences=True)
+    x = SpatialCGRU(x, CRN_OUTPUT_SIZE)
 
-    down_rnn = cgru(x)
-    up_rnn = reverse(cgru(reverse(x)))
-    left_rnn = cgru(transpose(x))
-    right_rnn = reverse(cgru(reverse(transpose(x))))
+    # Convolve again
+    x = layers.Conv2D(1, (1,1))(x)
 
-    concat_out = layers.merge([left_rnn, right_rnn, up_rnn, down_rnn], mode='concat', concat_axis=-1)
-
-    # Convolve the image some more
-    output_mask = layers.Conv2D(1, (1,1), activation='sigmoid')(concat_out)
-
-    moo = models.Model(inputs=img, outputs=output_mask)
+    moo = models.Model(inputs=img, outputs=x)
     moo.compile(optimizer='adam', loss='mse')
     return moo
 
