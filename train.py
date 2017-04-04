@@ -1,32 +1,53 @@
 import os
-import sys
-import time
-import importlib
+import gpumemory  # Import more memory
+from keras import models, layers
 
-# The training set contains 50k sentences
-# Each sentence contains ~10 words
-# One epoch should be around 500k, or ~100 iterations
-iter_count = 3000
 
-module_name = sys.argv[1]
-module_name = module_name.rstrip('.py')
-target = importlib.import_module(module_name)
+def get_params():
+    args = docopt(__doc__)
+    return {argname(k): argval(args[k]) for k in args}
 
-model_filename = 'model.{}.{}.h5'.format(module_name, int(time.time()))
-if len(sys.argv) > 2:
-    model_filename = sys.argv[2]
 
-model = target.build_model()
-if os.path.exists(model_filename):
-    model.load_weights(model_filename)
+def argname(k):
+    return k.strip('<').strip('>').strip('--').replace('-', '_')
 
-model.compile(optimizer='adam', loss='categorical_crossentropy', metrics=['accuracy'], decay=.01, lr=.001)
 
-g = target.training_generator()
+def argval(val):
+    if hasattr(val, 'lower') and val.lower() in ['true', 'false']:
+        return val.lower().startswith('t')
+    try:
+        return int(val)
+    except ValueError:
+        pass
+    try:
+        return float(val)
+    except ValueError:
+        pass
+    return val
 
-for i in range(iter_count):
-    samples = 2**12
-    print("Trained {}k samples:".format(i * samples / 2**10))
-    target.demo(model)
-    model.fit_generator(g, steps_per_epoch=100, nb_epoch=1)
-    model.save_weights(model_filename)
+
+def train(module_name, model_filename, epochs, batches_per_epoch, batch_size, **kwargs):
+    target = __import__(module_name.rstrip('.py'))
+
+    if model_filename == 'default_model':
+        model_filename = 'model.{}.{}.h5'.format(module_name, int(time.time()))
+
+    if os.path.exists(model_filename):
+        print("Loading model from {}".format(model_filename))
+        model = models.load_model(model_filename)
+    else:
+        print("Building new model")
+        model = target.build_model(**kwargs)
+
+    model.compile(optimizer='adam', loss='categorical_crossentropy', metrics=['accuracy'], decay=.01)
+    tg = target.training_generator()
+    for i in range(epochs):
+        target.demo(model)
+        model.fit_generator(tg, batches_per_epoch)
+        model.save(model_filename)
+    print("Finished training {} epochs".format(epochs))
+
+
+if __name__ == '__main__':
+    params = get_params()
+    train(**params)

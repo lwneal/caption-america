@@ -21,7 +21,7 @@ from util import IMG_HEIGHT, IMG_WIDTH, IMG_SHAPE, IMG_CHANNELS
 # Learn the softmax layer and the conv/batchnorm behind it
 LEARNABLE_RESNET_LAYERS = 7
 
-def build_model(GRU_SIZE=1024, WORDVEC_SIZE=300, ACTIVATION='relu'):
+def build_model(GRU_SIZE=1024, WORDVEC_SIZE=300, ACTIVATION='relu', **kwargs):
     resnet = build_resnet()
 
     # Global Image featuers (convnet output for the whole image)
