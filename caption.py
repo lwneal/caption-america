@@ -136,7 +136,7 @@ def evaluate(model, x_global, x_local, x_ctx, box, texts, temperature=.0):
     candidate, likelihood = predict(model, x_global, x_local, x_ctx, box, temperature)
     candidate = util.strip(candidate)
     references = map(util.strip, texts)
-    print("{} {} ({})".format(likelihood, candidate, references[0]))
+    #print("{} {} ({})".format(likelihood, candidate, references[0]))
     scores = {}
     scores['bleu1'], scores['bleu2'] = bleu(candidate, references)
     scores['rouge'] = rouge(candidate, references)
@@ -184,7 +184,7 @@ def demo(model):
     for f in ['cat.jpg', 'dog.jpg', 'horse.jpg', 'car.jpg']:
         x_global = util.decode_jpg(f)
         height, width, _ = x_global.shape
-        box = (width * .25, width * .75, height * .25, height * .75)
+        box = (width * .1, width * .9, height * .1, height * .9)
         x_local = util.decode_jpg(f, crop_to_box=box)
         x_ctx = img_ctx(box)
         print("Prediction for {} {}:".format(f, box)),
