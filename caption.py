@@ -26,6 +26,8 @@ LEARNABLE_RESNET_LAYERS = 7
 def build_model(GRU_SIZE=1024, WORDVEC_SIZE=300, ACTIVATION='relu', **kwargs):
     from keras.applications.vgg16 import VGG16
     cnn = VGG16(include_top=True)
+    for layer in cnn.layers[:-1]:
+        layer.trainable = False
 
     # Global Image featuers (convnet output for the whole image)
     input_img_global = layers.Input(shape=IMG_SHAPE)
@@ -85,7 +87,7 @@ def build_resnet():
 # TODO: Move batching out to the generic runner
 def training_generator():
     while True:
-        BATCH_SIZE = 10
+        BATCH_SIZE = 16
         X_global = np.zeros((BATCH_SIZE, IMG_HEIGHT, IMG_WIDTH, IMG_CHANNELS))
         X_local = np.zeros((BATCH_SIZE, IMG_HEIGHT, IMG_WIDTH, IMG_CHANNELS))
         X_words = np.zeros((BATCH_SIZE, MAX_WORDS), dtype=int)
@@ -146,21 +148,21 @@ def evaluate(model, x_global, x_local, x_ctx, box, texts, temperature=.0):
 def get_scores(candidate_list, references_list):
     scores = {}
     from nltk.translate import bleu_score
-    scores['bleu1'] = bleu_score.corpus_bleu(references_list, candidate_list, weights = [1.0])
-    scores['bleu2'] = bleu_score.corpus_bleu(references_list, candidate_list, weights = [.5, .5])
+    def no_smoothing(p_n, **kwargs):
+        return p_n
+    scores['nltk_bleu1'] = bleu_score.corpus_bleu(references_list, candidate_list, smoothing_function=no_smoothing, weights=[1.0])
+    scores['nltk_bleu2'] = bleu_score.corpus_bleu(references_list, candidate_list, smoothing_function=no_smoothing, weights=[.5, .5])
+    scores['alt_bleu1'] = np.mean([bleu(c, ref, n=1) for c, ref in zip(candidate_list, references_list)])
+    scores['alt_bleu2'] = np.mean([bleu(c, ref, n=2) for c, ref in zip(candidate_list, references_list)])
     scores['rouge'] = np.mean([rouge(c, ref) for c, ref in zip(candidate_list, references_list)])
     return scores
 
 
-"""
-# Alternate implementation of BLEU, not comparable to the nltk implementation
+# Alternate implementation of BLEU, different than the nltk implementation
 def bleu(candidate, references, n=4):
     weights = [1.0 / n] * n
-    from nltk.translate.bleu_score import sentence_bleu
-    # alternate score, calculated in a different way
-    #scores, _ = bleu_scorer.BleuScorer(candidate, references, n=2).compute_score(option='closest')
-    return sentence_bleu(references, candidate, weights=weights)
-"""
+    scores, _ = bleu_scorer.BleuScorer(candidate, references, n=2).compute_score(option='closest')
+    return scores
 
 
 def rouge(candidate, references):
