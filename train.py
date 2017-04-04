@@ -1,4 +1,5 @@
 import os
+import time
 import gpumemory  # Import more memory
 from keras import models, layers
 
