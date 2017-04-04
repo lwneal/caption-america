@@ -137,11 +137,32 @@ def evaluate(model, x_global, x_local, x_ctx, box, texts, temperature=.0):
     candidate = util.strip(candidate)
     references = map(util.strip, texts)
     #print("{} {} ({})".format(likelihood, candidate, references[0]))
+    return candidate, references
+
+
+def get_scores(candidate_list, references_list):
     scores = {}
-    scores['bleu1'], scores['bleu2'] = bleu(candidate, references)
-    scores['rouge'] = rouge(candidate, references)
-    scores['likelihood'] = likelihood
+    from nltk.translate import bleu_score
+    scores['bleu1'] = bleu_score.corpus_bleu(references_list, candidate_list, weights = [1.0])
+    scores['bleu2'] = bleu_score.corpus_bleu(references_list, candidate_list, weights = [.5, .5])
+    scores['rouge'] = np.mean([rouge(c, ref) for c, ref in zip(candidate_list, references_list)])
     return scores
+
+
+"""
+# Alternate implementation of BLEU, not comparable to the nltk implementation
+def bleu(candidate, references, n=4):
+    weights = [1.0 / n] * n
+    from nltk.translate.bleu_score import sentence_bleu
+    # alternate score, calculated in a different way
+    #scores, _ = bleu_scorer.BleuScorer(candidate, references, n=2).compute_score(option='closest')
+    return sentence_bleu(references, candidate, weights=weights)
+"""
+
+
+def rouge(candidate, references):
+    return rouge_scorer.Rouge().calc_score([candidate], references)
+
 
 
 def predict(model, x_global, x_local, x_ctx, box, temperature=.0):
@@ -170,14 +191,6 @@ def sample(preds, temperature=1.0):
     probas = np.random.multinomial(1, preds, 1)
     return np.argmax(probas)
 
-
-def bleu(candidate, references):
-    scores, _ = bleu_scorer.BleuScorer(candidate, references, n=2).compute_score(option='closest')
-    return scores
-
-
-def rouge(candidate, references):
-    return rouge_scorer.Rouge().calc_score([candidate], references)
 
 
 def demo(model):
