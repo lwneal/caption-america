@@ -85,7 +85,7 @@ def build_resnet():
 # TODO: Move batching out to the generic runner
 def training_generator():
     while True:
-        BATCH_SIZE = 32
+        BATCH_SIZE = 10
         X_global = np.zeros((BATCH_SIZE, IMG_HEIGHT, IMG_WIDTH, IMG_CHANNELS))
         X_local = np.zeros((BATCH_SIZE, IMG_HEIGHT, IMG_WIDTH, IMG_CHANNELS))
         X_words = np.zeros((BATCH_SIZE, MAX_WORDS), dtype=int)
