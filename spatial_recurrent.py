@@ -31,12 +31,15 @@ def example():
     #target = (target > 1).astype(np.float)
 
     # Target: Light up a fixed-radius circle around the cat
-    #target = circle(cx/SCALE, cy/SCALE, 4)
+    target = circle(cx/SCALE, cy/SCALE, 4)
+
+    # Target: Light up the midway point between the cat and the dog
+    #target = circle((dx+cx)/2/SCALE, (dy+cy)/2/SCALE, 1)
 
     # Tricky Target: Light up a circle around the cat 
     # BUT with radius equal to the distance to the dog
-    rad = math.sqrt((dx-cx)**2 + (dy-cy)**2)
-    target = circle(cx/SCALE, cy/SCALE, rad/SCALE)
+    #rad = math.sqrt((dx-cx)**2 + (dy-cy)**2)
+    #target = circle(cx/SCALE, cy/SCALE, rad/SCALE)
     return pixels, target
 
 
@@ -105,19 +108,10 @@ def build_model():
     x = layers.Conv2D(CRN_INPUT_SIZE, (1,1))(x)
 
     # Statefully scan the image in each of four directions
-    cgru = SpatialCGRU(CRN_OUTPUT_SIZE, return_sequences=True)
+    cgru = SpatialCGRU(x, CRN_OUTPUT_SIZE)
 
-    down_rnn = cgru(x)
-    up_rnn = reverse(cgru(reverse(x)))
-    left_rnn = cgru(transpose(x))
-    right_rnn = reverse(cgru(reverse(transpose(x))))
-
-    concat_out = layers.merge([left_rnn, right_rnn, up_rnn, down_rnn], mode='concat', concat_axis=-1)
-
-    # Convolve the image some more
-    output_mask = layers.Conv2D(1, (1,1), activation='sigmoid')(concat_out)
-
-    moo = models.Model(inputs=img, outputs=output_mask)
+    import pdb; pdb.set_trace()
+    moo = models.Model(inputs=img, outputs=cgru)
     moo.compile(optimizer='adam', loss='mse')
     return moo
 
