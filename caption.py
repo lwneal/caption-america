@@ -20,13 +20,12 @@ from util import IMG_HEIGHT, IMG_WIDTH, IMG_SHAPE, IMG_CHANNELS
 
 from cgru import SpatialCGRU
 
-# Learn the softmax layer and the conv/batchnorm behind it
-LEARNABLE_RESNET_LAYERS = 7
+LEARNABLE_CNN_LAYERS = 0
 
 def build_model(GRU_SIZE=1024, WORDVEC_SIZE=300, ACTIVATION='relu', **kwargs):
     from keras.applications.vgg16 import VGG16
     cnn = VGG16(include_top=True)
-    for layer in cnn.layers[:-1]:
+    for layer in cnn.layers[:-LEARNABLE_CNN_LAYERS]:
         layer.trainable = False
 
     # Global Image featuers (convnet output for the whole image)
