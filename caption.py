@@ -21,11 +21,13 @@ from util import IMG_HEIGHT, IMG_WIDTH, IMG_SHAPE, IMG_CHANNELS
 from cgru import SpatialCGRU
 
 BATCH_SIZE = 16
-LEARNABLE_CNN_LAYERS = 0
+LEARNABLE_CNN_LAYERS = 2
 
 def build_model(GRU_SIZE=1024, WORDVEC_SIZE=300, ACTIVATION='relu', **kwargs):
     from keras.applications.vgg16 import VGG16
     vgg = VGG16(include_top=False)
+    for layer in vgg.layers[:-LEARNABLE_CNN_LAYERS]:
+        layer.trainable = False
 
     # Global Image featuers (convnet output for the whole image)
     input_img_global = layers.Input(batch_shape=(BATCH_SIZE, IMG_HEIGHT, IMG_WIDTH, IMG_CHANNELS))
@@ -80,13 +82,6 @@ def build_model(GRU_SIZE=1024, WORDVEC_SIZE=300, ACTIVATION='relu', **kwargs):
     x = layers.Dense(words.VOCABULARY_SIZE, activation='softmax')(x)
 
     return models.Model(inputs=[input_img_global, input_img_local, input_words, input_ctx], outputs=x)
-
-
-def build_resnet():
-    resnet = resnet50.ResNet50(include_top=True)
-    for layer in resnet.layers[:-LEARNABLE_RESNET_LAYERS]:
-        layer.trainable = False
-    return resnet
 
 
 # TODO: Move batching out to the generic runner
