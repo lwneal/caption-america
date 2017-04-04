@@ -3,6 +3,12 @@ import time
 import gpumemory  # Import more memory
 from keras import models, layers
 
+import os
+import sys
+import time
+import importlib
+import numpy as np
+from pprint import pprint
 
 def get_params():
     args = docopt(__doc__)
@@ -46,9 +52,29 @@ def train(module_name, model_filename, epochs, batches_per_epoch, batch_size, **
         target.demo(model)
         model.fit_generator(tg, batches_per_epoch)
         model.save(model_filename)
+        validate(target, model)
     print("Finished training {} epochs".format(epochs))
+
+
+def validate(target, model):
+    g = target.validation_generator()
+    bleu1 = []
+    bleu2 = []
+    rouge = []
+    print("Validating on 100 examples...")
+    for _ in range(100):
+        validation_example = next(g)
+        score = target.evaluate(model, *validation_example)
+        bleu1.append(score['bleu1'])
+        bleu2.append(score['bleu2'])
+        rouge.append(score['rouge'])
+    print("Number of Captions: {}".format(len(bleu2)))
+    for (name, data) in [('BLEU1', bleu1), ('BLEU2', bleu2), ('ROUGE', rouge)]:
+        print '{} min/max/mean'.format(name)
+        print np.array(data).min(), np.array(data).max(), np.array(data).mean()
 
 
 if __name__ == '__main__':
     params = get_params()
     train(**params)
+
