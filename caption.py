@@ -25,12 +25,14 @@ LEARNABLE_CNN_LAYERS = 0
 
 def build_model(GRU_SIZE=1024, WORDVEC_SIZE=300, ACTIVATION='relu', **kwargs):
     from keras.applications.vgg16 import VGG16
-    vgg = VGG16(include_top=False)
+    cnn = VGG16(include_top=False)
+    for layer in cnn.layers[:-LEARNABLE_CNN_LAYERS]:
+        layer.trainable = False
 
     # Global Image featuers (convnet output for the whole image)
     input_img_global = layers.Input(batch_shape=(BATCH_SIZE, IMG_HEIGHT, IMG_WIDTH, IMG_CHANNELS))
-    image_global = vgg(input_img_global)
-    image_global = SpatialCGRU(64, return_sequences=True)(image_global)
+    image_global = cnn(input_img_global)
+    image_global = SpatialCGRU(image_global, 256)
     image_global = layers.Flatten()(image_global)
     image_global = layers.Dense(1024, activation='relu')(image_global)
 
@@ -42,8 +44,8 @@ def build_model(GRU_SIZE=1024, WORDVEC_SIZE=300, ACTIVATION='relu', **kwargs):
 
     # Local Image features (convnet output inside the bounding box)
     input_img_local = layers.Input(batch_shape=(BATCH_SIZE, IMG_HEIGHT, IMG_WIDTH, IMG_CHANNELS))
-    image_local = vgg(input_img_local)
-    image_local = SpatialCGRU(64, return_sequences=True)(image_local)
+    image_local = cnn(input_img_local)
+    image_local = SpatialCGRU(image_local, 256)
     image_local = layers.Flatten()(image_local)
     image_local = layers.Dense(1024, activation='relu')(image_local)
 
@@ -80,13 +82,6 @@ def build_model(GRU_SIZE=1024, WORDVEC_SIZE=300, ACTIVATION='relu', **kwargs):
     x = layers.Dense(words.VOCABULARY_SIZE, activation='softmax')(x)
 
     return models.Model(inputs=[input_img_global, input_img_local, input_words, input_ctx], outputs=x)
-
-
-def build_resnet():
-    resnet = resnet50.ResNet50(include_top=True)
-    for layer in resnet.layers[:-LEARNABLE_RESNET_LAYERS]:
-        layer.trainable = False
-    return resnet
 
 
 # TODO: Move batching out to the generic runner

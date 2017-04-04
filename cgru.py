@@ -9,15 +9,31 @@ from keras.utils import conv_utils
 from keras import activations
 
 transpose = layers.Lambda(lambda x: tf.transpose(x, [0, 2, 1, 3]))
-reverse = layers.Lambda(lambda x: K.reverse(x, 1))
+reverse = layers.Lambda(lambda x: tf.reverse(x, [1]))
 
-class SpatialCGRU(Recurrent):
+def SpatialCGRU(x, output_size, **kwargs):
+    # Statefully scan the image in each of four directions
+    cgru = CGRU(output_size, return_sequences=True, **kwargs)
+
+    down_rnn = cgru(x)
+    up_rnn = reverse(cgru(reverse(x)))
+    left_rnn = cgru(transpose(x))
+    right_rnn = reverse(cgru(reverse(transpose(x))))
+
+    concat_out = layers.merge([left_rnn, right_rnn, up_rnn, down_rnn], mode='concat', concat_axis=-1)
+
+    # Convolve the image some more
+    output_mask = layers.Conv2D(output_size, (1,1))(concat_out)
+    return output_mask
+
+
+class CGRU(Recurrent):
     """ A 1D convolutional tanh/sigmoid GRU with no dropout and no regularization
     Convolves forward along the first non-batch axis (ie from top to bottom of an image)
     """
     def __init__(self, units=10, *args, **kwargs):
         # __init__ just sets params, doesn't allocate anything
-        super(SpatialCGRU, self).__init__(**kwargs)
+        super(CGRU, self).__init__(**kwargs)
         self.units = units
 
         # TODO: Handle all the normal RNN parameters

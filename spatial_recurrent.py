@@ -110,8 +110,10 @@ def build_model():
     # Statefully scan the image in each of four directions
     cgru = SpatialCGRU(x, CRN_OUTPUT_SIZE)
 
-    import pdb; pdb.set_trace()
-    moo = models.Model(inputs=img, outputs=cgru)
+    # Convolve again
+    x = layers.Conv2D(1, (1,1))(x)
+
+    moo = models.Model(inputs=img, outputs=x)
     moo.compile(optimizer='adam', loss='mse')
     return moo
 
