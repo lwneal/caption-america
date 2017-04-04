@@ -23,7 +23,9 @@ def onehot(index):
     return res
 
 
-def expand(x):
+def expand(x, batch_size=None):
+    if batch_size is not None:
+        return np.array([x] * batch_size)
     return np.expand_dims(x, axis=0)
 
 

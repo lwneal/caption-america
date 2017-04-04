@@ -33,6 +33,8 @@ class SpatialCGRU(Recurrent):
         from keras.engine.topology import InputSpec
         self.input_spec = InputSpec(ndim=4)
 
+    def get_output_shape_for(self, input_shape):
+        return (input_shape[0], input_shape[1], input_shape[2], self.units)
 
     def build(self, input_shape):
         print("Calling build() for ConvGRU with input shape {}".format(input_shape))
@@ -42,7 +44,7 @@ class SpatialCGRU(Recurrent):
         channels_per_pixel = input_shape[3]
 
         # Notice that the input_spec changes after __init__ and again after build(), becoming more restrictive
-        self.input_spec = keras.engine.InputSpec(shape=(batch_size, None, pixels_per_step, channels_per_pixel))
+        self.input_spec = keras.engine.InputSpec(shape=(batch_size, time_steps, pixels_per_step, channels_per_pixel))
         self.state_spec = keras.engine.InputSpec(shape=(batch_size, pixels_per_step, self.units))
 
         # TODO: does Keras require self.states?
@@ -81,8 +83,6 @@ class SpatialCGRU(Recurrent):
         prev_y = state_tensors[0]
         # 1 x self.input_dim
         x_t = input_tensor
-
-
         z = self.recurrent_activation(tf.nn.convolution(x_t, self.Uz, padding='SAME') + tf.nn.convolution(prev_y, self.Wz, padding='SAME'))
         r = self.recurrent_activation(tf.nn.convolution(x_t, self.Ur, padding='SAME') + tf.nn.convolution(prev_y, self.Wr, padding='SAME'))
         h = self.activation(
