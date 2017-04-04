@@ -5,7 +5,7 @@ import tensorflow as tf
 from keras import backend as K
 
 import imutil
-from cgru import SpatialCGRU
+from cgru import SpatialCGRU, transpose, reverse
 
 print("Setting arrays to pretty-print")
 np.set_printoptions(formatter={'float_kind':lambda x: "% .1f" % x})
@@ -58,7 +58,6 @@ def map_to_img(Y, scale=224./7):
     output *= Y.max()
     return output
 
-
 def build_model():
     BATCH_SIZE = 1
     IMG_WIDTH = 224
@@ -83,13 +82,10 @@ def build_model():
     # Statefully scan the image in each of four directions
     cgru = SpatialCGRU(CRN_OUTPUT_SIZE, return_sequences=True)
 
-    r = layers.Lambda(lambda x: K.reverse(x, 1))
-    t = layers.Lambda(lambda x: tf.transpose(x, [0, 2, 1, 3]))
-
     down_rnn = cgru(x)
-    up_rnn = r(cgru(r(x)))
-    left_rnn = cgru(t(x))
-    right_rnn = r(cgru(r(t(x))))
+    up_rnn = reverse(cgru(reverse(x)))
+    left_rnn = cgru(transpose(x))
+    right_rnn = reverse(cgru(reverse(transpose(x))))
 
     concat_out = layers.merge([left_rnn, right_rnn, up_rnn, down_rnn], mode='concat', concat_axis=-1)
 

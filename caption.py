@@ -18,15 +18,18 @@ import util
 from util import MAX_WORDS
 from util import IMG_HEIGHT, IMG_WIDTH, IMG_SHAPE, IMG_CHANNELS
 
+from cgru import SpatialCGRU
+
 # Learn the softmax layer and the conv/batchnorm behind it
 LEARNABLE_RESNET_LAYERS = 7
 
 def build_model(GRU_SIZE=1024, WORDVEC_SIZE=300, ACTIVATION='relu', **kwargs):
-    resnet = build_resnet()
+    from keras.applications.vgg16 import VGG16
+    cnn = VGG16(include_top=True)
 
     # Global Image featuers (convnet output for the whole image)
     input_img_global = layers.Input(shape=IMG_SHAPE)
-    image_global = resnet(input_img_global)
+    image_global = cnn(input_img_global)
     image_global = layers.BatchNormalization()(image_global)
     image_global = layers.Dense(WORDVEC_SIZE/2, activation=ACTIVATION)(image_global)
     image_global = layers.BatchNormalization()(image_global)
@@ -35,7 +38,7 @@ def build_model(GRU_SIZE=1024, WORDVEC_SIZE=300, ACTIVATION='relu', **kwargs):
 
     # Local Image features (convnet output inside the bounding box)
     input_img_local = layers.Input(shape=IMG_SHAPE)
-    image_local = resnet(input_img_local)
+    image_local = cnn(input_img_local)
     image_local = layers.BatchNormalization()(image_local)
     image_local = layers.Dense(WORDVEC_SIZE/2, activation=ACTIVATION)(image_local)
     image_local = layers.BatchNormalization()(image_local)

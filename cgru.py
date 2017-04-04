@@ -1,5 +1,6 @@
 import tensorflow as tf
 import keras
+from keras import layers
 from keras import activations
 from keras import initializers
 from keras.layers import Recurrent
@@ -7,6 +8,8 @@ from keras import backend as K
 from keras.utils import conv_utils
 from keras import activations
 
+transpose = layers.Lambda(lambda x: K.transpose(x, [0, 2, 1, 3]))
+reverse = layers.Lambda(lambda x: tf.reverse(x, 1))
 
 class SpatialCGRU(Recurrent):
     """ A 1D convolutional tanh/sigmoid GRU with no dropout and no regularization
