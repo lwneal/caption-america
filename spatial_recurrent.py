@@ -1,3 +1,4 @@
+import math
 import numpy as np
 from keras import layers, models
 from PIL import Image
@@ -10,24 +11,36 @@ from cgru import SpatialCGRU, transpose, reverse
 print("Setting arrays to pretty-print")
 np.set_printoptions(formatter={'float_kind':lambda x: "% .1f" % x})
 
+IMG_WIDTH = 512
+
+# Level of downsampling performed by the network
+SCALE = 32
 
 cat = np.array(Image.open('kitten.jpg').resize((32,32)))
 dog = np.array(Image.open('puppy.jpg').resize((32,32)))
 def example():
-    pixels = np.zeros((224, 224, 3))
-    rand = lambda: np.random.randint(1, 224-32-1)
+    pixels = np.zeros((IMG_WIDTH, IMG_WIDTH, 3))
+    rand = lambda: np.random.randint(1, IMG_WIDTH-32-1)
     cx, cy = rand(), rand()
     pixels[cy:cy+32, cx:cx+32] = cat
     dx, dy = rand(), rand()
     pixels[dy:dy+32, dx:dx+32] = dog
 
     # Target: Light up for all pixels that are ABOVE the cat AND RIGHT OF the dog
-    target = up_cone(cx, cy) + right_cone(dx, dy)
-    target = (target > 1).astype(np.float)
+    #target = up_cone(cx, cy) + right_cone(dx, dy)
+    #target = (target > 1).astype(np.float)
+
+    # Target: Light up a fixed-radius circle around the cat
+    #target = circle(cx/SCALE, cy/SCALE, 4)
+
+    # Tricky Target: Light up a circle around the cat 
+    # BUT with radius equal to the distance to the dog
+    rad = math.sqrt((dx-cx)**2 + (dy-cy)**2)
+    target = circle(cx/SCALE, cy/SCALE, rad/SCALE)
     return pixels, target
 
 
-def up_cone(x, y, input_shape=(224,224), scale=7/224.):
+def up_cone(x, y, input_shape=(IMG_WIDTH,IMG_WIDTH), scale=1.0 / 32):
     height, width = int(input_shape[0]*scale), int(input_shape[1]*scale)
     Y = np.zeros((height, width, 1))
     pos_y, pos_x = int(y * scale), int(x * scale)
@@ -39,7 +52,7 @@ def up_cone(x, y, input_shape=(224,224), scale=7/224.):
     return Y
     
 
-def right_cone(x, y, input_shape=(224,224), scale=7/224.):
+def right_cone(x, y, input_shape=(IMG_WIDTH,IMG_WIDTH), scale=1.0 / 32):
     height, width = int(input_shape[0]*scale), int(input_shape[1]*scale)
     Y = np.zeros((height, width, 1))
     pos_y, pos_x = int(y * scale), int(x * scale)
@@ -51,16 +64,28 @@ def right_cone(x, y, input_shape=(224,224), scale=7/224.):
     return Y
 
 
-def map_to_img(Y, scale=224./7):
-    output = np.zeros((224,224,3))
+def circle(x, y, r):
+    width = IMG_WIDTH / 32
+    height = width
+    Y = np.zeros((height, width, 1))
+    for t in range(628):
+        yi = y + r * math.cos(t / 100.)
+        xi = x + r * math.sin(t / 100.)
+        if 0 <= yi < height and 0 <= xi < width:
+            Y[int(yi), int(xi)] = 1.0
+    return Y
+
+
+def map_to_img(Y, scale=32.0):
+    output = np.zeros((IMG_WIDTH,IMG_WIDTH,3))
     from scipy.misc import imresize
     output[:,:,0] = imresize(Y[:,:,0], scale)
     output *= Y.max()
     return output
 
+
 def build_model():
     BATCH_SIZE = 1
-    IMG_WIDTH = 224
     IMG_HEIGHT = IMG_WIDTH
     IMG_CHANNELS = 3
 
@@ -108,11 +133,12 @@ def train(model):
         preds = model.predict(X)
         print("Input:")
         imutil.show(X)
-        print("Network Output:")
-        imutil.show(map_to_img(preds[0]))
+        print("Ground Truth vs. Network Output:")
         print("Min {:.2f} Max {:.2f}".format(preds.min(), preds.max()))
         print("Ground Truth:")
         imutil.show(map_to_img(Y[0]))
+        print("Network Output:")
+        imutil.show(X[0] + map_to_img(preds[0]))
 
 
 if __name__ == '__main__':
