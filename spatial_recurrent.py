@@ -1,3 +1,4 @@
+import sys
 import math
 import numpy as np
 from keras import layers, models
@@ -11,7 +12,7 @@ from cgru import SpatialCGRU, transpose, reverse
 print("Setting arrays to pretty-print")
 np.set_printoptions(formatter={'float_kind':lambda x: "% .1f" % x})
 
-IMG_WIDTH = 512
+IMG_WIDTH = 640
 
 # Level of downsampling performed by the network
 SCALE = 32
@@ -24,20 +25,28 @@ def example():
     cx, cy = rand(), rand()
     pixels[cy:cy+32, cx:cx+32] = cat
     dx, dy = rand(), rand()
-    pixels[dy:dy+32, dx:dx+32] = dog
+    #pixels[dy:dy+32, dx:dx+32] = dog
 
-    # Target: Light up for all pixels that are ABOVE the cat AND RIGHT OF the dog
+    # Easy Target:
+    # Light up the row and column centered on the cat
+    target = crosshair(cx/SCALE, cy/SCALE)
+
+    # Easy Target:
+    # Light up a cone to the right of the cat
+    #target = right_cone(cx, cy)
+
+    # Medium Target: Light up for all pixels that are ABOVE the cat AND RIGHT OF the dog
     #target = up_cone(cx, cy) + right_cone(dx, dy)
     #target = (target > 1).astype(np.float)
 
-    # Target: Light up a fixed-radius circle around the cat
-    target = circle(cx/SCALE, cy/SCALE, 4)
+    # Medium Target: Light up a fixed-radius circle around the cat
+    #target = circle(cx/SCALE, cy/SCALE, 4)
 
-    # Target: Light up the midway point between the cat and the dog
+    # Hard Target: Light up the midway point between the cat and the dog
     #target = circle((dx+cx)/2/SCALE, (dy+cy)/2/SCALE, 1)
 
-    # Tricky Target: Light up a circle around the cat 
-    # BUT with radius equal to the distance to the dog
+    # Hard Target: Light up a circle around the cat BUT
+    # with radius equal to the distance to the dog
     #rad = math.sqrt((dx-cx)**2 + (dy-cy)**2)
     #target = circle(cx/SCALE, cy/SCALE, rad/SCALE)
     return pixels, target
@@ -67,6 +76,15 @@ def right_cone(x, y, input_shape=(IMG_WIDTH,IMG_WIDTH), scale=1.0 / 32):
     return Y
 
 
+def crosshair(x, y):
+    width = IMG_WIDTH / 32
+    height = width
+    Y = np.zeros((height, width, 1))
+    Y[y,:] = 1.0
+    Y[:,x] = 1.0
+    return Y
+
+
 def circle(x, y, r):
     width = IMG_WIDTH / 32
     height = width
@@ -92,8 +110,8 @@ def build_model():
     IMG_HEIGHT = IMG_WIDTH
     IMG_CHANNELS = 3
 
-    CRN_INPUT_SIZE = 8
-    CRN_OUTPUT_SIZE = 5
+    CRN_INPUT_SIZE = 16
+    CRN_OUTPUT_SIZE = 16
 
     img = layers.Input(batch_shape=(BATCH_SIZE, IMG_HEIGHT, IMG_WIDTH, IMG_CHANNELS))
 
@@ -108,10 +126,10 @@ def build_model():
     x = layers.Conv2D(CRN_INPUT_SIZE, (1,1))(x)
 
     # Statefully scan the image in each of four directions
-    cgru = SpatialCGRU(x, CRN_OUTPUT_SIZE)
+    x = SpatialCGRU(x, CRN_OUTPUT_SIZE)
 
     # Convolve again
-    x = layers.Conv2D(1, (1,1))(x)
+    x = layers.Conv2D(1, (1,1), activation='sigmoid')(x)
 
     moo = models.Model(inputs=img, outputs=x)
     moo.compile(optimizer='adam', loss='mse')
@@ -125,6 +143,10 @@ def train(model):
 
     print("Target Y:")
     imutil.show(map_to_img(Y))
+
+
+    if 'load' in sys.argv:
+        model.load_weights('spatial_recurrent.h5')
 
     while True:
         for i in range(100):
@@ -142,6 +164,9 @@ def train(model):
         imutil.show(map_to_img(Y[0]))
         print("Network Output:")
         imutil.show(X[0] + map_to_img(preds[0]))
+
+        if 'save' in sys.argv:
+            model.save_weights('spatial_recurrent.h5')
 
 
 if __name__ == '__main__':

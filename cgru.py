@@ -13,12 +13,10 @@ reverse = layers.Lambda(lambda x: tf.reverse(x, [1]))
 
 def SpatialCGRU(x, output_size, **kwargs):
     # Statefully scan the image in each of four directions
-    cgru = CGRU(output_size, return_sequences=True, **kwargs)
-
-    down_rnn = cgru(x)
-    up_rnn = reverse(cgru(reverse(x)))
-    left_rnn = cgru(transpose(x))
-    right_rnn = reverse(cgru(reverse(transpose(x))))
+    down_rnn = CGRU(output_size)(x)
+    up_rnn = reverse(CGRU(output_size)(reverse(x)))
+    left_rnn = transpose(CGRU(output_size)(transpose(x)))
+    right_rnn = transpose(reverse(CGRU(output_size)(reverse(transpose(x)))))
 
     concat_out = layers.merge([left_rnn, right_rnn, up_rnn, down_rnn], mode='concat', concat_axis=-1)
 
@@ -33,7 +31,7 @@ class CGRU(Recurrent):
     """
     def __init__(self, units=10, *args, **kwargs):
         # __init__ just sets params, doesn't allocate anything
-        super(CGRU, self).__init__(**kwargs)
+        super(CGRU, self).__init__(return_sequences=True, **kwargs)
         self.units = units
 
         # TODO: Handle all the normal RNN parameters
