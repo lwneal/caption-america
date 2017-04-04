@@ -21,18 +21,18 @@ from util import IMG_HEIGHT, IMG_WIDTH, IMG_SHAPE, IMG_CHANNELS
 from cgru import SpatialCGRU
 
 BATCH_SIZE = 16
-LEARNABLE_CNN_LAYERS = 2
+LEARNABLE_CNN_LAYERS = 0
 
 def build_model(GRU_SIZE=1024, WORDVEC_SIZE=300, ACTIVATION='relu', **kwargs):
     from keras.applications.vgg16 import VGG16
-    vgg = VGG16(include_top=False)
-    for layer in vgg.layers[:-LEARNABLE_CNN_LAYERS]:
+    cnn = VGG16(include_top=False)
+    for layer in cnn.layers[:-LEARNABLE_CNN_LAYERS]:
         layer.trainable = False
 
     # Global Image featuers (convnet output for the whole image)
     input_img_global = layers.Input(batch_shape=(BATCH_SIZE, IMG_HEIGHT, IMG_WIDTH, IMG_CHANNELS))
-    image_global = vgg(input_img_global)
-    image_global = SpatialCGRU(64, return_sequences=True)(image_global)
+    image_global = cnn(input_img_global)
+    image_global = SpatialCGRU(image_global, 256)
     image_global = layers.Flatten()(image_global)
     image_global = layers.Dense(1024, activation='relu')(image_global)
 
@@ -44,8 +44,8 @@ def build_model(GRU_SIZE=1024, WORDVEC_SIZE=300, ACTIVATION='relu', **kwargs):
 
     # Local Image features (convnet output inside the bounding box)
     input_img_local = layers.Input(batch_shape=(BATCH_SIZE, IMG_HEIGHT, IMG_WIDTH, IMG_CHANNELS))
-    image_local = vgg(input_img_local)
-    image_local = SpatialCGRU(64, return_sequences=True)(image_local)
+    image_local = cnn(input_img_local)
+    image_local = SpatialCGRU(image_local, 256)
     image_local = layers.Flatten()(image_local)
     image_local = layers.Dense(1024, activation='relu')(image_local)
 
