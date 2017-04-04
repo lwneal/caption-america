@@ -1,6 +1,9 @@
 # Image Utils
 # Fun interactive utilities for image manipulation
+import math
 import os
+import tempfile
+from distutils import spawn
 import numpy as np
 from PIL import Image
 from StringIO import StringIO
@@ -73,8 +76,10 @@ def show(data, video=None, box=None):
     # Display image in the terminal if imgcat is available
     if spawn.find_executable('imgcat'):
         with tempfile.NamedTemporaryFile(suffix='.jpg') as tmp:
-            tmp.write(encode_jpg(image))
-            os.system('imgcat {}'.format(tmp.name))
+            #tmp.write(encode_jpg(pixels))
+            #os.system('imgcat {}'.format(tmp.name))
+            open('/tmp/foobar.jpg', 'w').write(encode_jpg(pixels))
+            os.system('imgcat /tmp/foobar.jpg')
 
     # Output JPG files can be collected into a video with ffmpeg -i *.jpg
     if video:
