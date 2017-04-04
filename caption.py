@@ -20,42 +20,48 @@ from util import IMG_HEIGHT, IMG_WIDTH, IMG_SHAPE, IMG_CHANNELS
 
 from cgru import SpatialCGRU
 
+BATCH_SIZE = 16
 LEARNABLE_CNN_LAYERS = 0
 
 def build_model(GRU_SIZE=1024, WORDVEC_SIZE=300, ACTIVATION='relu', **kwargs):
     from keras.applications.vgg16 import VGG16
-    cnn = VGG16(include_top=True)
-    for layer in cnn.layers[:-LEARNABLE_CNN_LAYERS]:
-        layer.trainable = False
+    vgg = VGG16(include_top=False)
 
     # Global Image featuers (convnet output for the whole image)
-    input_img_global = layers.Input(shape=IMG_SHAPE)
-    image_global = cnn(input_img_global)
+    input_img_global = layers.Input(batch_shape=(BATCH_SIZE, IMG_HEIGHT, IMG_WIDTH, IMG_CHANNELS))
+    image_global = vgg(input_img_global)
+    image_global = SpatialCGRU(64, return_sequences=True)(image_global)
+    image_global = layers.Flatten()(image_global)
+    image_global = layers.Dense(1024, activation='relu')(image_global)
+
+
     image_global = layers.BatchNormalization()(image_global)
     image_global = layers.Dense(WORDVEC_SIZE/2, activation=ACTIVATION)(image_global)
     image_global = layers.BatchNormalization()(image_global)
     image_global = layers.RepeatVector(MAX_WORDS)(image_global)
 
-
     # Local Image features (convnet output inside the bounding box)
-    input_img_local = layers.Input(shape=IMG_SHAPE)
-    image_local = cnn(input_img_local)
+    input_img_local = layers.Input(batch_shape=(BATCH_SIZE, IMG_HEIGHT, IMG_WIDTH, IMG_CHANNELS))
+    image_local = vgg(input_img_local)
+    image_local = SpatialCGRU(64, return_sequences=True)(image_local)
+    image_local = layers.Flatten()(image_local)
+    image_local = layers.Dense(1024, activation='relu')(image_local)
+
     image_local = layers.BatchNormalization()(image_local)
     image_local = layers.Dense(WORDVEC_SIZE/2, activation=ACTIVATION)(image_local)
     image_local = layers.BatchNormalization()(image_local)
     image_local = layers.RepeatVector(MAX_WORDS)(image_local)
 
-
     # Context Vector input
     # normalized to [0,1] the values:
     # left, top, right, bottom, (box area / image area)
-    input_ctx = layers.Input(shape=(5,))
+    input_ctx = layers.Input(batch_shape=(BATCH_SIZE, 5))
     ctx = layers.BatchNormalization()(input_ctx)
     ctx = layers.RepeatVector(MAX_WORDS)(ctx)
 
     language_model = models.Sequential()
 
-    input_words = layers.Input(shape=(MAX_WORDS,), dtype='int32')
+    input_words = layers.Input(batch_shape=(BATCH_SIZE, MAX_WORDS), dtype='int32')
     language = layers.Embedding(words.VOCABULARY_SIZE, WORDVEC_SIZE, input_length=MAX_WORDS)(input_words)
     language = layers.BatchNormalization()(language)
     language = layers.GRU(GRU_SIZE, return_sequences=True)(language)
@@ -86,7 +92,6 @@ def build_resnet():
 # TODO: Move batching out to the generic runner
 def training_generator():
     while True:
-        BATCH_SIZE = 16
         X_global = np.zeros((BATCH_SIZE, IMG_HEIGHT, IMG_WIDTH, IMG_CHANNELS))
         X_local = np.zeros((BATCH_SIZE, IMG_HEIGHT, IMG_WIDTH, IMG_CHANNELS))
         X_words = np.zeros((BATCH_SIZE, MAX_WORDS), dtype=int)
@@ -171,19 +176,23 @@ def rouge(candidate, references):
 
 def predict(model, x_global, x_local, x_ctx, box, temperature=.0):
     indices = util.left_pad([])
-    #x0, x1, y0, y1 = box
-    #coords = [0, (y0 + y1) / 2, (x0 + x1) / 2]
     likelihoods = []
+    # An entire batch must be run at once, but we only use the first slot in that batch
+    x_global = util.expand(x_global, BATCH_SIZE)
+    x_local = util.expand(x_local, BATCH_SIZE)
+    indices = util.expand(indices, BATCH_SIZE)
+    x_ctx = util.expand(x_ctx, BATCH_SIZE)
+
     for i in range(MAX_WORDS):
-        preds = model.predict([util.expand(x_global), util.expand(x_local), util.expand(indices), util.expand(x_ctx)])
+        preds = model.predict([x_global, x_local, indices, x_ctx])
         preds = preds[0]
-        indices = np.roll(indices, -1)
+        indices[0] = np.roll(indices[0], -1)
         if temperature > 0:
-            indices[-1] = sample(preds, temperature)
+            indices[0][-1] = sample(preds, temperature)
         else:
-            indices[-1] = np.argmax(preds, axis=-1)
-        likelihoods.append(preds[indices[-1]])
-    return words.words(indices), np.mean(likelihoods)
+            indices[0][-1] = np.argmax(preds, axis=-1)
+        likelihoods.append(preds[indices[0][-1]])
+    return words.words(indices[0]), np.mean(likelihoods)
 
 
 def sample(preds, temperature=1.0):
