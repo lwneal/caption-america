@@ -13,7 +13,7 @@ from visualizer import Visualizer
 print("Setting arrays to pretty-print")
 np.set_printoptions(formatter={'float_kind':lambda x: "% .1f" % x})
 
-IMG_WIDTH = 320
+IMG_WIDTH = 640
 
 # Level of downsampling performed by the network
 SCALE = 16
@@ -25,11 +25,11 @@ cat = np.array(Image.open('kitten.jpg').resize((32,32)))
 dog = np.array(Image.open('puppy.jpg').resize((32,32)))
 def example():
     pixels = np.zeros((IMG_WIDTH, IMG_WIDTH, 3))
-    rand = lambda: np.random.randint(1, IMG_WIDTH-32-1)
+    rand = lambda: np.random.randint(16, IMG_WIDTH-16-1)
     cx, cy = rand(), rand()
-    pixels[cy:cy+32, cx:cx+32] = cat
+    pixels[cy-16:cy+16, cx-16:cx+16] = cat
     dx, dy = rand(), rand()
-    pixels[dy:dy+32, dx:dx+32] = dog
+    pixels[dy-16:dy+16, dx-16:dx+16] = dog
 
     # Easy Target: A single layer CGRU gets this right away
     # Light up the row and column centered on the cat
