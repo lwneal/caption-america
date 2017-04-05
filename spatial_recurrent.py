@@ -65,11 +65,11 @@ def example():
     target = np.clip(target, 0, 1)
 
     # Add a little epsilon to stave off dead gradient
-    target += .05
+    #target += .05
 
     # Gaussian blur to smooth the gradient
-    from scipy.ndimage.filters import gaussian_filter
-    target = gaussian_filter(target, sigma=.5)
+    #from scipy.ndimage.filters import gaussian_filter
+    #target = gaussian_filter(target, sigma=.5)
 
     return pixels, target
 
