@@ -36,7 +36,6 @@ def build_model(GRU_SIZE=1024, WORDVEC_SIZE=300, ACTIVATION='relu', **kwargs):
     image_global = layers.Flatten()(image_global)
     image_global = layers.Dense(1024, activation='relu')(image_global)
 
-
     image_global = layers.BatchNormalization()(image_global)
     image_global = layers.Dense(WORDVEC_SIZE/2, activation=ACTIVATION)(image_global)
     image_global = layers.BatchNormalization()(image_global)

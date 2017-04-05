@@ -12,10 +12,10 @@ from cgru import SpatialCGRU, transpose, reverse
 print("Setting arrays to pretty-print")
 np.set_printoptions(formatter={'float_kind':lambda x: "% .1f" % x})
 
-IMG_WIDTH = 640
+IMG_WIDTH = 320
 
 # Level of downsampling performed by the network
-SCALE = 32
+SCALE = 16
 
 cat = np.array(Image.open('kitten.jpg').resize((32,32)))
 dog = np.array(Image.open('puppy.jpg').resize((32,32)))
@@ -25,9 +25,9 @@ def example():
     cx, cy = rand(), rand()
     pixels[cy:cy+32, cx:cx+32] = cat
     dx, dy = rand(), rand()
-    #pixels[dy:dy+32, dx:dx+32] = dog
+    pixels[dy:dy+32, dx:dx+32] = dog
 
-    # Easy Target:
+    # Easy Target: A single layer CGRU gets this right away
     # Light up the row and column centered on the cat
     target = crosshair(cx/SCALE, cy/SCALE)
 
@@ -36,13 +36,16 @@ def example():
     #target = right_cone(cx, cy)
 
     # Medium Target: Light up for all pixels that are ABOVE the cat AND RIGHT OF the dog
+    # Takes a little more training but one layer figures this out
     #target = up_cone(cx, cy) + right_cone(dx, dy)
     #target = (target > 1).astype(np.float)
 
     # Medium Target: Light up a fixed-radius circle around the cat
+    # The only hard part here is learning to ignore the dog
     #target = circle(cx/SCALE, cy/SCALE, 4)
 
     # Hard Target: Light up the midway point between the cat and the dog
+    # This can't be done at distance without two layers
     #target = circle((dx+cx)/2/SCALE, (dy+cy)/2/SCALE, 1)
 
     # Hard Target: Light up a circle around the cat BUT
@@ -77,7 +80,7 @@ def right_cone(x, y, input_shape=(IMG_WIDTH,IMG_WIDTH), scale=1.0 / 32):
 
 
 def crosshair(x, y):
-    width = IMG_WIDTH / 32
+    width = IMG_WIDTH / SCALE
     height = width
     Y = np.zeros((height, width, 1))
     Y[y,:] = 1.0
@@ -86,7 +89,7 @@ def crosshair(x, y):
 
 
 def circle(x, y, r):
-    width = IMG_WIDTH / 32
+    width = IMG_WIDTH / SCALE
     height = width
     Y = np.zeros((height, width, 1))
     for t in range(628):
@@ -97,10 +100,10 @@ def circle(x, y, r):
     return Y
 
 
-def map_to_img(Y, scale=32.0):
+def map_to_img(Y):
     output = np.zeros((IMG_WIDTH,IMG_WIDTH,3))
     from scipy.misc import imresize
-    output[:,:,0] = imresize(Y[:,:,0], scale)
+    output[:,:,0] = imresize(Y[:,:,0], (IMG_WIDTH, IMG_WIDTH))
     output *= Y.max()
     return output
 
@@ -110,8 +113,8 @@ def build_model():
     IMG_HEIGHT = IMG_WIDTH
     IMG_CHANNELS = 3
 
-    CRN_INPUT_SIZE = 16
-    CRN_OUTPUT_SIZE = 16
+    CRN_INPUT_SIZE = 8
+    CRN_OUTPUT_SIZE = 8
 
     img = layers.Input(batch_shape=(BATCH_SIZE, IMG_HEIGHT, IMG_WIDTH, IMG_CHANNELS))
 
@@ -127,12 +130,15 @@ def build_model():
 
     # Statefully scan the image in each of four directions
     x = SpatialCGRU(x, CRN_OUTPUT_SIZE)
+    x = SpatialCGRU(x, CRN_OUTPUT_SIZE)
 
-    # Convolve again
-    x = layers.Conv2D(1, (1,1), activation='sigmoid')(x)
+    # Upsample and convolve
+    x = layers.UpSampling2D((2,2))(x)
+    x = layers.Conv2D(1, (3,3), activation='sigmoid', padding='same')(x)
 
     moo = models.Model(inputs=img, outputs=x)
     moo.compile(optimizer='adam', loss='mse')
+    moo.summary()
     return moo
 
 
@@ -149,7 +155,7 @@ def train(model):
         model.load_weights('spatial_recurrent.h5')
 
     while True:
-        for i in range(100):
+        for i in range(32):
             X, Y = example()
             X = np.expand_dims(X, axis=0)
             Y = np.expand_dims(Y, axis=0)
