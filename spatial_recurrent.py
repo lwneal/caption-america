@@ -50,26 +50,27 @@ def example():
 
     # Hard Target: Line from cat to dog
     # This can't be done at distance without two layers
-    target = line(dx/SCALE, dy/SCALE, cx/SCALE, cy/SCALE, color=0)
+    #target = line(dx/SCALE, dy/SCALE, cx/SCALE, cy/SCALE, color=0)
 
     # Hard Target: Light up the midway point between the cat and the dog
     #target = circle((dx+cx)/2/SCALE, (dy+cy)/2/SCALE, 1)
 
     # Hard Target: Light up a circle around the cat BUT
     # with radius equal to the distance to the dog
-    #rad = math.sqrt((dx-cx)**2 + (dy-cy)**2)
-    #target = circle(cx/SCALE, cy/SCALE, rad/SCALE)
+    rad = math.sqrt((dx-cx)**2 + (dy-cy)**2)
+    target = circle(cx/SCALE, cy/SCALE, rad/SCALE, color=0)
+    target += circle(dx/SCALE, dy/SCALE, rad/SCALE, color=2)
 
     # For fun, ALSO draw a blue circle around the cat
-    target += circle(cx/SCALE, cy/SCALE, 4, color=2)
-    target = np.clip(target, 0, 1)
+    #target += circle(cx/SCALE, cy/SCALE, 4, color=2)
+    #target = np.clip(target, 0, 1)
 
     # Add a little epsilon to stave off dead gradient
-    #target += .05
+    target += .05
 
     # Gaussian blur to smooth the gradient
-    #from scipy.ndimage.filters import gaussian_filter
-    #target = gaussian_filter(target, sigma=.5)
+    from scipy.ndimage.filters import gaussian_filter
+    target = gaussian_filter(target, sigma=.5)
 
     return pixels, target
 
