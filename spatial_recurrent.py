@@ -29,7 +29,7 @@ def example():
 
     # Easy Target: A single layer CGRU gets this right away
     # Light up the row and column centered on the cat
-    target = crosshair(cx/SCALE, cy/SCALE)
+    #target = crosshair(cx/SCALE, cy/SCALE)
 
     # Easy Target:
     # Light up a cone to the right of the cat
@@ -44,8 +44,11 @@ def example():
     # The only hard part here is learning to ignore the dog
     #target = circle(cx/SCALE, cy/SCALE, 4)
 
-    # Hard Target: Light up the midway point between the cat and the dog
+    # Hard Target: Line from cat to dog
     # This can't be done at distance without two layers
+    target = line(dx/SCALE, dy/SCALE, cx/SCALE, cy/SCALE)
+
+    # Hard Target: Light up the midway point between the cat and the dog
     #target = circle((dx+cx)/2/SCALE, (dy+cy)/2/SCALE, 1)
 
     # Hard Target: Light up a circle around the cat BUT
@@ -97,6 +100,17 @@ def circle(x, y, r):
         xi = x + r * math.sin(t / 100.)
         if 0 <= yi < height and 0 <= xi < width:
             Y[int(yi), int(xi)] = 1.0
+    return Y
+
+
+def line(x0, y0, x1, y1):
+    width = IMG_WIDTH / SCALE
+    height = width
+    Y = np.zeros((height, width, 1))
+    for t in range(100):
+        yi = y0 + (t / 100.) * (y1 - y0)
+        xi = x0 + (t / 100.) * (x1 - x0)
+        Y[int(yi), int(xi)] = 1.0
     return Y
 
 
