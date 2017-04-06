@@ -7,8 +7,8 @@ Arguments:
 
 Options:
       --model_filename=<model>          Name of saved .h5 parameter files after each epoch. [default: default_model]
-      --epochs=<epochs>                 Number of epochs to train [default: 200].
-      --batches_per_epoch=<b>           Number of batches per epoch [default: 100].
+      --epochs=<epochs>                 Number of epochs to train [default: 2000].
+      --batches_per_epoch=<b>           Number of batches per epoch [default: 1000].
       --batch_size=<size>               Batch size for training [default: 16]
       --foobar=<foobar>                 Enable foobar during training [default: False].
 """
