@@ -106,10 +106,12 @@ def process(jpg_data, box, texts):
     x_global, box = util.decode_jpg(jpg_data, box)
     text = util.strip(random.choice(texts))
     indices = words.indices(text)
-    idx = np.random.randint(0, len(indices))
-    x_words = util.left_pad(indices[:idx][-MAX_WORDS:])
+    #idx = np.random.randint(0, len(indices) - 1)
+    #indices = indices[idx:idx + MAX_WORDS - 1]
+    indices = indices[:MAX_WORDS]
 
-    y = util.onehot(util.right_pad(indices[idx:]))
+    x_words = util.right_pad(indices)
+    y = util.onehot(util.right_pad(indices[1:]))
 
     x_ctx = img_ctx(box)
     return [x_global, x_words, x_ctx], y

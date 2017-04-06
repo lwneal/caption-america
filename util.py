@@ -37,8 +37,7 @@ def left_pad(indices):
 
 def right_pad(indices):
     res = np.zeros(MAX_WORDS, dtype=int)
-    count = min(MAX_WORDS, len(indices))
-    res[:count] = indices[:count]
+    res[:len(indices)] = indices
     return res
 
 
