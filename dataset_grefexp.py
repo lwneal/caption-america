@@ -14,6 +14,14 @@ KEY_GREFEXP_VAL = 'dataset_grefexp_val'
 conn = redis.Redis()
 categories = {v['id']: v['name'] for v in json.load(open('coco_categories.json'))}
 
+# Spell check implementation
+def spell(text):
+    from enchant.checker import SpellChecker
+    chk = SpellChecker('en_US', text)
+    for err in chk:
+      err.replace(err.suggest()[0])
+    return chk.get_text()
+
 
 def example(reference_key=KEY_GREFEXP_TRAIN):
     key = conn.srandmember(reference_key)
