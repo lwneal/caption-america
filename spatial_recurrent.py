@@ -13,7 +13,7 @@ from visualizer import Visualizer
 print("Setting arrays to pretty-print")
 np.set_printoptions(formatter={'float_kind':lambda x: "% .1f" % x})
 
-IMG_WIDTH = 640
+IMG_WIDTH = 800
 
 # Level of downsampling performed by the network
 SCALE = 16
@@ -50,27 +50,27 @@ def example():
 
     # Hard Target: Line from cat to dog
     # This can't be done at distance without two layers
-    #target = line(dx/SCALE, dy/SCALE, cx/SCALE, cy/SCALE, color=0)
+    target = line(dx/SCALE, dy/SCALE, cx/SCALE, cy/SCALE, color=0)
 
     # Hard Target: Light up the midway point between the cat and the dog
-    #target = circle((dx+cx)/2/SCALE, (dy+cy)/2/SCALE, 1)
+    #target = circle((dx+cx)/2/SCALE, (dy+cy)/2/SCALE, 1, color=1)
 
     # Hard Target: Light up a circle around the cat BUT
     # with radius equal to the distance to the dog
-    rad = math.sqrt((dx-cx)**2 + (dy-cy)**2)
-    target = circle(cx/SCALE, cy/SCALE, rad/SCALE, color=0)
-    target += circle(dx/SCALE, dy/SCALE, rad/SCALE, color=2)
+    #rad = math.sqrt((dx-cx)**2 + (dy-cy)**2)
+    #target += circle(cx/SCALE, cy/SCALE, rad/SCALE, color=0)
+    #target += circle(dx/SCALE, dy/SCALE, rad/SCALE, color=2)
 
     # For fun, ALSO draw a blue circle around the cat
     #target += circle(cx/SCALE, cy/SCALE, 4, color=2)
     #target = np.clip(target, 0, 1)
 
     # Add a little epsilon to stave off dead gradient
-    target += .05
+    #target += .04
 
     # Gaussian blur to smooth the gradient
-    from scipy.ndimage.filters import gaussian_filter
-    target = gaussian_filter(target, sigma=.5)
+    #from scipy.ndimage.filters import gaussian_filter
+    #target = gaussian_filter(target, sigma=.4)
 
     return pixels, target
 
@@ -191,11 +191,11 @@ def train(model):
         model.load_weights('spatial_recurrent.h5')
 
     while True:
-        for i in range(32):
-            examples = [example() for _ in range(BATCH_SIZE)]
-            batch_X, batch_Y = map(np.array, zip(*examples))
-            h = model.train_on_batch(np.array(batch_X), np.array(batch_Y))
+        # Data for demo prediction
+        examples = [example() for _ in range(BATCH_SIZE)]
+        batch_X, batch_Y = map(np.array, zip(*examples))
 
+        # Predict
         preds = model.predict(batch_X)[-1]
         X = batch_X[-1]
         Y = batch_Y[-1]
@@ -207,6 +207,14 @@ def train(model):
         imutil.show(map_to_img(Y))
         print("Network Output:")
         imutil.show(X + map_to_img(preds))
+
+        print("Training...")
+        # Train for a while
+        for i in range(32):
+            examples = [example() for _ in range(BATCH_SIZE)]
+            batch_X, batch_Y = map(np.array, zip(*examples))
+            h = model.train_on_batch(np.array(batch_X), np.array(batch_Y))
+
 
         if 'save' in sys.argv:
             model.save_weights('spatial_recurrent.h5')

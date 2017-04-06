@@ -13,10 +13,12 @@ reverse = layers.Lambda(lambda x: tf.reverse(x, [1]))
 
 def SpatialCGRU(x, output_size, **kwargs):
     # Statefully scan the image in each of four directions
-    down_rnn = CGRU(output_size)(x)
-    up_rnn = reverse(CGRU(output_size)(reverse(x)))
-    left_rnn = transpose(CGRU(output_size)(transpose(x)))
-    right_rnn = transpose(reverse(CGRU(output_size)(reverse(transpose(x)))))
+    cgru = CGRU(output_size)
+
+    down_rnn = cgru(x)
+    up_rnn = reverse(cgru(reverse(x)))
+    left_rnn = transpose(cgru(transpose(x)))
+    right_rnn = transpose(reverse(cgru(reverse(transpose(x)))))
 
     concat_out = layers.merge([left_rnn, right_rnn, up_rnn, down_rnn], mode='concat', concat_axis=-1)
 
