@@ -18,8 +18,8 @@ conn = redis.Redis()
 categories = {v['id']: v['name'] for v in json.load(open('coco_categories.json'))}
 
 
-# Spell check implementation
-checker = enchant.Dict()
+# Spell check only against words in the vocabular
+checker = enchant.request_pwl_dict('vocabulary.txt')
 def spell(text):
     words = []
     for w in text.split():
@@ -27,7 +27,7 @@ def spell(text):
         if suggestions:
             words.append(suggestions[0])
         else:
-            print("Unknown word: {}".format(w))
+            #print("Unknown word: {}".format(w))
             words.append(w)
     return ' '.join(words)
 
@@ -57,7 +57,7 @@ def get_annotation_for_key(key):
     box = (x0, x0 + width, y0, y0 + height)
     texts = [g['raw'] for g in grefexp['refexps']]
 
-    #texts = [spell(strip(t)) for t in texts]
+    texts = [spell(strip(t)) for t in texts]
 
     category = categories[anno['category_id']]
     return jpg_data, box, texts
