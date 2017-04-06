@@ -35,6 +35,13 @@ def left_pad(indices):
     return res
 
 
+def right_pad(indices):
+    res = np.zeros(MAX_WORDS, dtype=int)
+    count = min(MAX_WORDS, len(indices))
+    res[:count] = indices[:count]
+    return res
+
+
 def strip(text):
     # Remove the START_TOKEN
     text = text.replace('000', '')
