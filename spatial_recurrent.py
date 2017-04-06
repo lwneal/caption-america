@@ -12,13 +12,15 @@ from cgru import SpatialCGRU, transpose, reverse
 print("Setting arrays to pretty-print")
 np.set_printoptions(formatter={'float_kind':lambda x: "% .1f" % x})
 
-IMG_WIDTH = 800
+IMG_WIDTH = 224
 
 # Level of downsampling performed by the network
 SCALE = 16
 
 # Output RGB
 CHANNELS = 3
+
+BATCH_SIZE = 16
 
 cat = np.array(Image.open('kitten.jpg').resize((32,32)))
 dog = np.array(Image.open('puppy.jpg').resize((32,32)))
@@ -137,8 +139,6 @@ def map_to_img(Y):
     output *= Y.max()
     return output
 
-
-BATCH_SIZE = 16
 
 def build_model():
     IMG_HEIGHT = IMG_WIDTH
