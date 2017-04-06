@@ -5,6 +5,9 @@ import random
 
 import redis
 import numpy as np
+import enchant
+
+from util import strip
 
 DATA_DIR = '/home/nealla/data'
 
@@ -13,6 +16,20 @@ KEY_GREFEXP_VAL = 'dataset_grefexp_val'
 
 conn = redis.Redis()
 categories = {v['id']: v['name'] for v in json.load(open('coco_categories.json'))}
+
+
+# Spell check implementation
+checker = enchant.Dict()
+def spell(text):
+    words = []
+    for w in text.split():
+        suggestions = checker.suggest(w)
+        if suggestions:
+            words.append(suggestions[0])
+        else:
+            print("Unknown word: {}".format(w))
+            words.append(w)
+    return ' '.join(words)
 
 
 def example(reference_key=KEY_GREFEXP_TRAIN):
@@ -39,5 +56,8 @@ def get_annotation_for_key(key):
     x0, y0, width, height = anno['bbox']
     box = (x0, x0 + width, y0, y0 + height)
     texts = [g['raw'] for g in grefexp['refexps']]
+
+    #texts = [spell(strip(t)) for t in texts]
+
     category = categories[anno['category_id']]
     return jpg_data, box, texts
