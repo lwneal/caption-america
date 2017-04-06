@@ -68,7 +68,7 @@ def build_model(GRU_SIZE=1024, WORDVEC_SIZE=300, ACTIVATION='relu', **kwargs):
     # How do I get mask_zero=True working in the embed layer?
 
     x = layers.concatenate([image_global, repeat_ctx, language])
-    x = layers.GRU(GRU_SIZE, return_sequences=True)(x)
+    x = layers.GRU(GRU_SIZE)(x)
     x = layers.BatchNormalization()(x)
     x = layers.Dense(words.VOCABULARY_SIZE, activation='softmax')(x)
 
@@ -82,7 +82,7 @@ def training_generator():
         #X_local = np.zeros((BATCH_SIZE, IMG_HEIGHT, IMG_WIDTH, IMG_CHANNELS))
         X_words = np.zeros((BATCH_SIZE, MAX_WORDS), dtype=int)
         X_ctx = np.zeros((BATCH_SIZE,5))
-        Y = np.zeros((BATCH_SIZE, MAX_WORDS, words.VOCABULARY_SIZE))
+        Y = np.zeros((BATCH_SIZE, words.VOCABULARY_SIZE))
         for i in range(BATCH_SIZE):
             x, y = process(*dataset_grefexp.example())
             x_global, x_words, x_ctx = x
@@ -108,15 +108,16 @@ def process(jpg_data, box, texts):
     x_global, box = util.decode_jpg(jpg_data, box)
     text = util.strip(random.choice(texts))
     indices = words.indices(text)
-    #idx = np.random.randint(0, len(indices) - 1)
-    #indices = indices[idx:idx + MAX_WORDS - 1]
-    indices = indices[:MAX_WORDS]
+    idx = np.random.randint(0, len(indices) - 1)
+    x_indices = indices[:idx]
+    if len(x_indices) > MAX_WORDS:
+        x_indices = x_indices[-MAX_WORDS:]
 
-    x_words = util.right_pad(indices)
-    y = util.onehot(util.right_pad(indices[1:]))
+    x_indices = util.left_pad(x_indices)
+    y = util.onehot(indices[idx])
 
     x_ctx = img_ctx(box)
-    return [x_global, x_words, x_ctx], y
+    return [x_global, x_indices, x_ctx], y
 
 
 def img_ctx(box):
@@ -165,17 +166,17 @@ def rouge(candidate, references):
 
 def predict(model, x_global, x_ctx, box):
     # An entire batch must be run at once, but we only use the first slot in that batch
-    indices = util.left_pad([])
+    indices = util.left_pad([words.START_TOKEN_IDX])
     x_global = util.expand(x_global, BATCH_SIZE)
     indices = util.expand(indices, BATCH_SIZE)
     x_ctx = util.expand(x_ctx, BATCH_SIZE)
-    indices[:, 0] = words.START_TOKEN_IDX
 
     # Input is empty padding followed by start token
     output_words = []
     for i in range(1, MAX_WORDS):
         preds = model.predict([x_global, indices, x_ctx])
-        indices[:, i] = np.argmax(preds[:, i-1], axis=1)
+        indices = np.roll(indices, -1, axis=1)
+        indices[:, -1] = np.argmax(preds[:], axis=1)
 
     return words.words(indices[0])
 
