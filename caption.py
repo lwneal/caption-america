@@ -25,16 +25,16 @@ BATCH_SIZE = 16
 LEARNABLE_CNN_LAYERS = 1
 
 def build_model(GRU_SIZE=1024, WORDVEC_SIZE=300, ACTIVATION='relu', **kwargs):
-    cnn = applications.vgg16.VGG16(include_top=False)
-    #cnn = applications.resnet50.ResNet50(include_top=False)
+    #cnn = applications.vgg16.VGG16(include_top=False)
+    cnn = applications.resnet50.ResNet50(include_top=False)
     for layer in cnn.layers[:-LEARNABLE_CNN_LAYERS]:
         layer.trainable = False
 
     # Global Image featuers (convnet output for the whole image)
     input_img_global = layers.Input(batch_shape=(BATCH_SIZE, IMG_HEIGHT, IMG_WIDTH, IMG_CHANNELS))
     image_global = cnn(input_img_global)
-    image_global = SpatialCGRU(image_global, 256)
-    image_global = SpatialCGRU(image_global, 256)
+    #image_global = SpatialCGRU(image_global, 256)
+    #image_global = SpatialCGRU(image_global, 256)
     image_global = layers.Flatten()(image_global)
     image_global = layers.Dense(1024, activation='relu')(image_global)
 
