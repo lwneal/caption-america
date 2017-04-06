@@ -8,7 +8,6 @@ from keras import backend as K
 
 import imutil
 from cgru import SpatialCGRU, transpose, reverse
-from visualizer import Visualizer
 
 print("Setting arrays to pretty-print")
 np.set_printoptions(formatter={'float_kind':lambda x: "% .1f" % x})
