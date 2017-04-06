@@ -30,12 +30,20 @@ def build_model(GRU_SIZE=1024, WORDVEC_SIZE=300, ACTIVATION='relu', **kwargs):
     for layer in cnn.layers[:-LEARNABLE_CNN_LAYERS]:
         layer.trainable = False
 
+    # Context Vector input
+    # normalized to [0,1] the values:
+    # left, top, right, bottom, (box area / image area)
+    input_ctx = layers.Input(batch_shape=(BATCH_SIZE, 5))
+    ctx = layers.BatchNormalization()(input_ctx)
+    repeat_ctx = layers.RepeatVector(MAX_WORDS)(ctx)
+
     # Global Image featuers (convnet output for the whole image)
     input_img_global = layers.Input(batch_shape=(BATCH_SIZE, IMG_HEIGHT, IMG_WIDTH, IMG_CHANNELS))
     image_global = cnn(input_img_global)
     #image_global = SpatialCGRU(image_global, 256)
     #image_global = SpatialCGRU(image_global, 256)
     image_global = layers.Flatten()(image_global)
+    image_global = layers.Concatenate()([image_global, ctx])
     image_global = layers.Dense(1024, activation='relu')(image_global)
 
     image_global = layers.BatchNormalization()(image_global)
@@ -43,12 +51,6 @@ def build_model(GRU_SIZE=1024, WORDVEC_SIZE=300, ACTIVATION='relu', **kwargs):
     image_global = layers.BatchNormalization()(image_global)
     image_global = layers.RepeatVector(MAX_WORDS)(image_global)
 
-    # Context Vector input
-    # normalized to [0,1] the values:
-    # left, top, right, bottom, (box area / image area)
-    input_ctx = layers.Input(batch_shape=(BATCH_SIZE, 5))
-    ctx = layers.BatchNormalization()(input_ctx)
-    ctx = layers.RepeatVector(MAX_WORDS)(ctx)
 
     language_model = models.Sequential()
 
@@ -65,7 +67,7 @@ def build_model(GRU_SIZE=1024, WORDVEC_SIZE=300, ACTIVATION='relu', **kwargs):
     # Masking doesn't work along with concatenation.
     # How do I get mask_zero=True working in the embed layer?
 
-    x = layers.concatenate([image_global, ctx, language])
+    x = layers.concatenate([image_global, repeat_ctx, language])
     x = layers.GRU(GRU_SIZE, return_sequences=True)(x)
     x = layers.BatchNormalization()(x)
     x = layers.Dense(words.VOCABULARY_SIZE, activation='softmax')(x)
@@ -161,17 +163,21 @@ def rouge(candidate, references):
     return rouge_scorer.Rouge().calc_score([candidate], references)
 
 
-
 def predict(model, x_global, x_ctx, box):
     # An entire batch must be run at once, but we only use the first slot in that batch
     indices = util.left_pad([])
     x_global = util.expand(x_global, BATCH_SIZE)
     indices = util.expand(indices, BATCH_SIZE)
     x_ctx = util.expand(x_ctx, BATCH_SIZE)
+    indices[:, 0] = words.START_TOKEN_IDX
 
-    # Input is empty padding
-    preds = model.predict([x_global, indices, x_ctx])[0]
-    return words.words(np.argmax(preds, axis=1))
+    # Input is empty padding followed by start token
+    output_words = []
+    for i in range(1, MAX_WORDS):
+        preds = model.predict([x_global, indices, x_ctx])
+        indices[:, i] = np.argmax(preds[:, i-1], axis=1)
+
+    return words.words(indices[0])
 
 
 def sample(preds, temperature=1.0):
@@ -182,7 +188,6 @@ def sample(preds, temperature=1.0):
     preds = exp_preds / np.sum(exp_preds)
     probas = np.random.multinomial(1, preds, 1)
     return np.argmax(probas)
-
 
 
 def demo(model):
