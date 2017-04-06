@@ -24,7 +24,7 @@ from cgru import SpatialCGRU
 BATCH_SIZE = 16
 LEARNABLE_CNN_LAYERS = 1
 
-def build_model(GRU_SIZE=1024, WORDVEC_SIZE=300, ACTIVATION='relu', **kwargs):
+def build_model(GRU_SIZE=1024, WORDVEC_SIZE=1024, ACTIVATION='relu', **kwargs):
     #cnn = applications.vgg16.VGG16(include_top=False)
     cnn = applications.resnet50.ResNet50(include_top=False)
     for layer in cnn.layers[:-LEARNABLE_CNN_LAYERS]:
