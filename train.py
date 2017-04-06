@@ -50,13 +50,13 @@ def train(module_name, model_filename, epochs, batches_per_epoch, batch_size, **
     tg = target.training_generator()
     for i in range(epochs):
         target.demo(model)
-        #validate(target, model)
+        validate(target, model)
         model.fit_generator(tg, batches_per_epoch)
         model.save(model_filename)
     print("Finished training {} epochs".format(epochs))
 
 
-def validate(target, model, count=100):
+def validate(target, model, count=10):
     g = target.validation_generator()
     bleu1 = []
     bleu2 = []
@@ -67,6 +67,7 @@ def validate(target, model, count=100):
     for _ in range(count):
         validation_example = next(g)
         c, r = target.evaluate(model, *validation_example)
+        print c
         candidate_list.append(c)
         references_list.append(r)
     scores = target.get_scores(candidate_list, references_list)
