@@ -56,15 +56,15 @@ def train(module_name, model_filename, epochs, batches_per_epoch, batch_size, **
     print("Finished training {} epochs".format(epochs))
 
 
-def validate(target, model):
+def validate(target, model, count=100):
     g = target.validation_generator()
     bleu1 = []
     bleu2 = []
     rouge = []
-    print("Validating on 100 examples...")
+    print("Validating on {} examples...".format(count))
     candidate_list = []
     references_list = []
-    for _ in range(10):
+    for _ in range(count):
         validation_example = next(g)
         c, r = target.evaluate(model, *validation_example)
         candidate_list.append(c)
