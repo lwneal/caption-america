@@ -50,7 +50,7 @@ def train(module_name, model_filename, epochs, batches_per_epoch, batch_size, **
     tg = target.training_generator()
     for i in range(epochs):
         target.demo(model)
-        validate(target, model)
+        #validate(target, model)
         model.fit_generator(tg, batches_per_epoch)
         model.save(model_filename)
     print("Finished training {} epochs".format(epochs))
