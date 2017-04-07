@@ -160,7 +160,7 @@ def get_scores(candidate_list, references_list):
 # Alternate implementation of BLEU, different than the nltk implementation
 def bleu(candidate, references, n=4):
     weights = [1.0 / n] * n
-    scores, _ = bleu_scorer.BleuScorer(candidate, references, n=2).compute_score(option='closest')
+    scores, _ = bleu_scorer.BleuScorer(candidate, references, n=n).compute_score(option='closest')
     return scores
 
 
