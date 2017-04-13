@@ -22,11 +22,22 @@ from keras import applications
 from cgru import SpatialCGRU
 
 BATCH_SIZE = 16
-LEARNABLE_CNN_LAYERS = 1
 
-def build_model(GRU_SIZE=1024, WORDVEC_SIZE=1024, ACTIVATION='relu', **kwargs):
-    #cnn = applications.vgg16.VGG16(include_top=False)
-    cnn = applications.resnet50.ResNet50(include_top=False)
+def build_model(**params):
+    # TODO: get all these from **params
+    CNN = 'resnet'
+    INCLUDE_TOP = False
+    LEARNABLE_CNN_LAYERS = 1
+    GRU_SIZE=1024
+    WORDVEC_SIZE=1024
+    ACTIVATION='relu'
+    USE_CGRU = True
+
+    if CNN == 'vgg16':
+        cnn = applications.vgg16.VGG16(include_top=INCLUDE_TOP)
+    elif CNN == 'resnet':
+        cnn = applications.resnet50.ResNet50(include_top=INCLUDE_TOP)
+
     for layer in cnn.layers[:-LEARNABLE_CNN_LAYERS]:
         layer.trainable = False
 
@@ -42,9 +53,10 @@ def build_model(GRU_SIZE=1024, WORDVEC_SIZE=1024, ACTIVATION='relu', **kwargs):
     image_global = cnn(input_img_global)
     image_global = layers.Conv2D(1024, (3,3), padding='same', activation='relu')(image_global)
 
-    res_cgru = SpatialCGRU(image_global, 1024)
+    if USE_CGRU:
+        res_cgru = SpatialCGRU(image_global, 1024)
+        image_global = layers.add([image_global, res_cgru])
 
-    image_global = layers.add([image_global, res_cgru])
 
     image_global = layers.Flatten()(image_global)
     image_global = layers.Concatenate()([image_global, ctx])
@@ -54,7 +66,6 @@ def build_model(GRU_SIZE=1024, WORDVEC_SIZE=1024, ACTIVATION='relu', **kwargs):
     image_global = layers.Dense(WORDVEC_SIZE/2, activation=ACTIVATION)(image_global)
     image_global = layers.BatchNormalization()(image_global)
     image_global = layers.RepeatVector(MAX_WORDS)(image_global)
-
 
     language_model = models.Sequential()
 
@@ -80,7 +91,7 @@ def build_model(GRU_SIZE=1024, WORDVEC_SIZE=1024, ACTIVATION='relu', **kwargs):
 
 
 # TODO: Move batching out to the generic runner
-def training_generator():
+def training_generator(**params):
     while True:
         X_global = np.zeros((BATCH_SIZE, IMG_HEIGHT, IMG_WIDTH, IMG_CHANNELS))
         #X_local = np.zeros((BATCH_SIZE, IMG_HEIGHT, IMG_WIDTH, IMG_CHANNELS))
@@ -98,7 +109,7 @@ def training_generator():
         yield [X_global, X_words, X_ctx], Y
 
 
-def validation_generator():
+def validation_generator(**params):
     for k in dataset_grefexp.get_all_keys():
         jpg_data, box, texts = dataset_grefexp.get_annotation_for_key(k)
         x, y = process(jpg_data, box, texts)

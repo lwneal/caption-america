@@ -1,9 +1,6 @@
 """
 Usage:
-        main.py <module_name> [options]
-
-Arguments:
-        module_name: Name of the Python module to run
+        main.py [options]
 
 Options:
       --model_filename=<model>          Name of saved .h5 parameter files after each epoch. [default: default_model]
@@ -37,6 +34,8 @@ def argval(val):
         return float(val)
     except ValueError:
         pass
+    if val == 'None':
+        return None
     return val
 
 
