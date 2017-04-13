@@ -9,6 +9,7 @@ Options:
       --batch_size=<size>               Batch size for training [default: 16]
       --validation_count=<count>        Number of validation examples per epoch [default: 10]
       --use_cgru=<cgru>                 Build model with residual CGRU layers [default: False].
+      --learnable_cnn_layers=<layers>   Number of CNN layers to fine-tune [default: 1]
 """
 from docopt import docopt
 from pprint import pprint

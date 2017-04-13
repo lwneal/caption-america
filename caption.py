@@ -27,11 +27,11 @@ def build_model(**params):
     # TODO: get all these from **params
     CNN = 'resnet'
     INCLUDE_TOP = False
-    LEARNABLE_CNN_LAYERS = 1
+    LEARNABLE_CNN_LAYERS = params['learnable_cnn_layers']
     RNN_TYPE = 'LSTM'
     RNN_SIZE = 1024
     WORDVEC_SIZE = 1024
-    ACTIVATION='relu'
+    ACTIVATION = 'relu'
     USE_CGRU = params['use_cgru']
     CGRU_SIZE = 1024
     REDUCE_MEAN = True
