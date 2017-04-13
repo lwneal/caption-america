@@ -28,10 +28,12 @@ def build_model(**params):
     CNN = 'resnet'
     INCLUDE_TOP = False
     LEARNABLE_CNN_LAYERS = 1
-    GRU_SIZE=1024
-    WORDVEC_SIZE=1024
+    GRU_SIZE = 1024
+    WORDVEC_SIZE = 1024
     ACTIVATION='relu'
-    USE_CGRU = True
+    USE_CGRU = False
+    CGRU_SIZE = 1024
+    REDUCE_MEAN = True
 
     if CNN == 'vgg16':
         cnn = applications.vgg16.VGG16(include_top=INCLUDE_TOP)
@@ -51,14 +53,18 @@ def build_model(**params):
     # Global Image featuers (convnet output for the whole image)
     input_img_global = layers.Input(batch_shape=(BATCH_SIZE, IMG_HEIGHT, IMG_WIDTH, IMG_CHANNELS))
     image_global = cnn(input_img_global)
-    image_global = layers.Conv2D(1024, (3,3), padding='same', activation='relu')(image_global)
 
     if USE_CGRU:
-        res_cgru = SpatialCGRU(image_global, 1024)
+        image_global = layers.Conv2D(CGRU_SIZE, (1,1), padding='same', activation='relu')(image_global)
+        res_cgru = SpatialCGRU(image_global, CGRU_SIZE)
         image_global = layers.add([image_global, res_cgru])
 
+    if REDUCE_MEAN:
+        image_global = layers.Lambda(lambda x: tf.reduce_mean(x, axis=1))(image_global)
+        image_global = layers.Lambda(lambda x: tf.reduce_mean(x, axis=1))(image_global)
+    else:
+        image_global = layers.Flatten()(image_global)
 
-    image_global = layers.Flatten()(image_global)
     image_global = layers.Concatenate()([image_global, ctx])
     image_global = layers.Dense(1024, activation='relu')(image_global)
 
@@ -66,6 +72,29 @@ def build_model(**params):
     image_global = layers.Dense(WORDVEC_SIZE/2, activation=ACTIVATION)(image_global)
     image_global = layers.BatchNormalization()(image_global)
     image_global = layers.RepeatVector(MAX_WORDS)(image_global)
+
+    # Local Image featuers (convnet output for just the bounding box)
+    input_img_local = layers.Input(batch_shape=(BATCH_SIZE, IMG_HEIGHT, IMG_WIDTH, IMG_CHANNELS))
+    image_local = cnn(input_img_local)
+
+    if USE_CGRU:
+        image_local = layers.Conv2D(CGRU_SIZE, (1,1), padding='same', activation='relu')(image_local)
+        res_cgru = SpatialCGRU(image_local, CGRU_SIZE)
+        image_local = layers.add([image_local, res_cgru])
+
+    if REDUCE_MEAN:
+        image_local = layers.Lambda(lambda x: tf.reduce_mean(x, axis=1))(image_local)
+        image_local = layers.Lambda(lambda x: tf.reduce_mean(x, axis=1))(image_local)
+    else:
+        image_local = layers.Flatten()(image_local)
+
+    image_local = layers.Concatenate()([image_local, ctx])
+    image_local = layers.Dense(1024, activation='relu')(image_local)
+
+    image_local = layers.BatchNormalization()(image_local)
+    image_local = layers.Dense(WORDVEC_SIZE/2, activation=ACTIVATION)(image_local)
+    image_local = layers.BatchNormalization()(image_local)
+    image_local = layers.RepeatVector(MAX_WORDS)(image_local)
 
     language_model = models.Sequential()
 
@@ -82,43 +111,43 @@ def build_model(**params):
     # Masking doesn't work along with concatenation.
     # How do I get mask_zero=True working in the embed layer?
 
-    x = layers.concatenate([image_global, repeat_ctx, language])
+    x = layers.concatenate([image_global, image_local, repeat_ctx, language])
     x = layers.GRU(GRU_SIZE)(x)
     x = layers.BatchNormalization()(x)
     x = layers.Dense(words.VOCABULARY_SIZE, activation='softmax')(x)
 
-    return models.Model(inputs=[input_img_global, input_words, input_ctx], outputs=x)
+    return models.Model(inputs=[input_img_global, input_img_local, input_words, input_ctx], outputs=x)
 
 
 # TODO: Move batching out to the generic runner
 def training_generator(**params):
     while True:
         X_global = np.zeros((BATCH_SIZE, IMG_HEIGHT, IMG_WIDTH, IMG_CHANNELS))
-        #X_local = np.zeros((BATCH_SIZE, IMG_HEIGHT, IMG_WIDTH, IMG_CHANNELS))
+        X_local = np.zeros((BATCH_SIZE, IMG_HEIGHT, IMG_WIDTH, IMG_CHANNELS))
         X_words = np.zeros((BATCH_SIZE, MAX_WORDS), dtype=int)
         X_ctx = np.zeros((BATCH_SIZE,5))
         Y = np.zeros((BATCH_SIZE, words.VOCABULARY_SIZE))
         for i in range(BATCH_SIZE):
             x, y = process(*dataset_grefexp.example())
-            x_global, x_words, x_ctx = x
+            x_global, x_local, x_words, x_ctx = x
             X_global[i] = x_global
-            #X_local[i] = x_local
+            X_local[i] = x_local
             X_words[i] = x_words
             X_ctx[i] = x_ctx
             Y[i] = y
-        yield [X_global, X_words, X_ctx], Y
+        yield [X_global, X_local, X_words, X_ctx], Y
 
 
 def validation_generator(**params):
     for k in dataset_grefexp.get_all_keys():
         jpg_data, box, texts = dataset_grefexp.get_annotation_for_key(k)
         x, y = process(jpg_data, box, texts)
-        x_global, x_words, x_ctx = x
-        yield x_global, x_ctx, box, texts
+        x_global, x_local, x_words, x_ctx = x
+        yield x_global, x_local, x_ctx, box, texts
 
 
 def process(jpg_data, box, texts):
-    #x_local = util.decode_jpg(jpg_data, crop_to_box=box)
+    x_local = util.decode_jpg(jpg_data, crop_to_box=box)
     # hack: scale the box down
     x_global, box = util.decode_jpg(jpg_data, box)
     text = util.strip(random.choice(texts))
@@ -132,7 +161,7 @@ def process(jpg_data, box, texts):
     y = util.onehot(indices[idx])
 
     x_ctx = img_ctx(box)
-    return [x_global, x_indices, x_ctx], y
+    return [x_global, x_local, x_indices, x_ctx], y
 
 
 def img_ctx(box):
@@ -147,8 +176,8 @@ def img_ctx(box):
     return x_ctx
 
 
-def evaluate(model, x_global, x_ctx, box, texts):
-    candidate = predict(model, x_global, x_ctx, box)
+def evaluate(model, x_global, x_local, x_ctx, box, texts):
+    candidate = predict(model, x_global, x_local, x_ctx, box)
     candidate = util.strip(candidate)
     references = map(util.strip, texts)
     #print("{} {} ({})".format(likelihood, candidate, references[0]))
@@ -179,17 +208,18 @@ def rouge(candidate, references):
     return rouge_scorer.Rouge().calc_score([candidate], references)
 
 
-def predict(model, x_global, x_ctx, box):
+def predict(model, x_global, x_local, x_ctx, box):
     # An entire batch must be run at once, but we only use the first slot in that batch
     indices = util.left_pad([words.START_TOKEN_IDX])
     x_global = util.expand(x_global, BATCH_SIZE)
+    x_local = util.expand(x_local, BATCH_SIZE)
     indices = util.expand(indices, BATCH_SIZE)
     x_ctx = util.expand(x_ctx, BATCH_SIZE)
 
     # Input is empty padding followed by start token
     output_words = []
     for i in range(1, MAX_WORDS):
-        preds = model.predict([x_global, indices, x_ctx])
+        preds = model.predict([x_global, x_local, indices, x_ctx])
         indices = np.roll(indices, -1, axis=1)
         indices[:, -1] = np.argmax(preds[:], axis=1)
 
@@ -211,7 +241,7 @@ def demo(model):
         x_global = util.decode_jpg(f)
         height, width, _ = x_global.shape
         box = (width * .15, width * .85, height * .15, height * .85)
-        #x_local = util.decode_jpg(f, crop_to_box=box)
+        x_local = util.decode_jpg(f, crop_to_box=box)
         x_ctx = img_ctx(box)
         print("Prediction for {} {}:".format(f, box)),
-        print(predict(model, x_global, x_ctx, box))
+        print(predict(model, x_global, x_local, x_ctx, box))
