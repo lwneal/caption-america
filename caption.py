@@ -28,10 +28,11 @@ def build_model(**params):
     CNN = 'resnet'
     INCLUDE_TOP = False
     LEARNABLE_CNN_LAYERS = 1
-    GRU_SIZE = 1024
+    RNN_TYPE = 'LSTM'
+    RNN_SIZE = 1024
     WORDVEC_SIZE = 1024
     ACTIVATION='relu'
-    USE_CGRU = False
+    USE_CGRU = params['use_cgru']
     CGRU_SIZE = 1024
     REDUCE_MEAN = True
 
@@ -100,11 +101,6 @@ def build_model(**params):
 
     input_words = layers.Input(batch_shape=(BATCH_SIZE, MAX_WORDS), dtype='int32')
     language = layers.Embedding(words.VOCABULARY_SIZE, WORDVEC_SIZE, input_length=MAX_WORDS)(input_words)
-    language = layers.BatchNormalization()(language)
-    language = layers.GRU(GRU_SIZE, return_sequences=True)(language)
-    language = layers.BatchNormalization()(language)
-    language = layers.TimeDistributed(layers.Dense(WORDVEC_SIZE, activation=ACTIVATION))(language)
-    language = layers.BatchNormalization()(language)
 
     # Problem with Keras 2: 
     # TypeError: Tensors in list passed to 'values' of 'ConcatV2' Op have types [uint8, uint8, bool, uint8] that don't all match.
@@ -112,7 +108,10 @@ def build_model(**params):
     # How do I get mask_zero=True working in the embed layer?
 
     x = layers.concatenate([image_global, image_local, repeat_ctx, language])
-    x = layers.GRU(GRU_SIZE)(x)
+    if RNN_TYPE == 'LSTM':
+        x = layers.LSTM(RNN_SIZE)(x)
+    else:
+        x = layers.GRU(RNN_SIZE)(x)
     x = layers.BatchNormalization()(x)
     x = layers.Dense(words.VOCABULARY_SIZE, activation='softmax')(x)
 
