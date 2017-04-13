@@ -175,7 +175,9 @@ def img_ctx(box):
     return x_ctx
 
 
-def evaluate(model, x_global, x_local, x_ctx, box, texts):
+def evaluate(model, x_global, x_local, x_ctx, box, texts, verbose=True):
+    if verbose:
+        util.show(x_global - x_global.min())
     candidate = predict(model, x_global, x_local, x_ctx, box)
     candidate = util.strip(candidate)
     references = map(util.strip, texts)
