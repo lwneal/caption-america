@@ -10,6 +10,7 @@ Options:
       --validation_count=<count>        Number of validation examples per epoch [default: 10]
       --use_cgru=<cgru>                 Build model with residual CGRU layers [default: False].
       --learnable_cnn_layers=<layers>   Number of CNN layers to fine-tune [default: 1]
+      --max_words=<words>               Max number of words to predict in an output sentence [default: 10]
 """
 from docopt import docopt
 from pprint import pprint

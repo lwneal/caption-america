@@ -14,7 +14,6 @@ IMG_WIDTH = 224
 IMG_HEIGHT = 224
 IMG_CHANNELS = 3
 IMG_SHAPE = (IMG_HEIGHT, IMG_WIDTH, IMG_CHANNELS)
-MAX_WORDS = 10
 
 
 def onehot(index):
@@ -29,14 +28,16 @@ def expand(x, batch_size=None):
     return np.expand_dims(x, axis=0)
 
 
-def left_pad(indices):
-    res = np.zeros(MAX_WORDS, dtype=int)
-    res[MAX_WORDS - len(indices):] = indices
+def left_pad(indices, **params):
+    max_words = params['max_words']
+    res = np.zeros(max_words, dtype=int)
+    res[max_words - len(indices):] = indices
     return res
 
 
-def right_pad(indices):
-    res = np.zeros(MAX_WORDS, dtype=int)
+def right_pad(indices, **params):
+    max_words = params['max_words']
+    res = np.zeros(max_words, dtype=int)
     res[:len(indices)] = indices
     return res
 
