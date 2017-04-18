@@ -29,11 +29,11 @@ def build_model(**params):
     LEARNABLE_CNN_LAYERS = params['learnable_cnn_layers']
     RNN_TYPE = 'LSTM'
     RNN_SIZE = 1024
-    WORDVEC_SIZE = 1024
+    WORDVEC_SIZE = params['wordvec_size']
     ACTIVATION = 'relu'
     USE_CGRU = params['use_cgru']
-    CGRU_SIZE = 1024
-    REDUCE_MEAN = True
+    CGRU_SIZE = params['cgru_size']
+    REDUCE_MEAN = params['reduce_visual']
     max_words = params['max_words']
 
     if CNN == 'vgg16':
@@ -55,6 +55,7 @@ def build_model(**params):
     input_img_global = layers.Input(batch_shape=(BATCH_SIZE, IMG_HEIGHT, IMG_WIDTH, IMG_CHANNELS))
     image_global = cnn(input_img_global)
 
+    # Add a residual CGRU layer
     if USE_CGRU:
         image_global = layers.Conv2D(CGRU_SIZE, (1,1), padding='same', activation='relu')(image_global)
         res_cgru = SpatialCGRU(image_global, CGRU_SIZE)

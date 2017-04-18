@@ -9,9 +9,12 @@ Options:
       --batch_size=<size>               Batch size for training [default: 16]
       --validation_count=<count>        Number of validation examples per epoch [default: 10]
       --use_cgru=<cgru>                 Build model with residual CGRU layers [default: False].
+      --cgru_size=<size>                Size of CGRU layer [default: 128]
+      --wordvec_size=<size>             Size of word embedding [default: 512]
       --learnable_cnn_layers=<layers>   Number of CNN layers to fine-tune [default: 1]
       --verbose=<verbose>               If True, output images and debug info [default: False].
       --max_words=<words>               Max number of words to predict in an output sentence [default: 10]
+      --reduce_visual=<reduce>          If True, mean-pool output of the CNN before feeding to dense layer [default: True]
 """
 from docopt import docopt
 from pprint import pprint
