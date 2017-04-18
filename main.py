@@ -11,6 +11,7 @@ Options:
       --use_cgru=<cgru>                 Build model with residual CGRU layers [default: False].
       --learnable_cnn_layers=<layers>   Number of CNN layers to fine-tune [default: 1]
       --verbose=<verbose>               If True, output images and debug info [default: False].
+      --max_words=<words>               Max number of words to predict in an output sentence [default: 10]
 """
 from docopt import docopt
 from pprint import pprint

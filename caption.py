@@ -15,7 +15,6 @@ import dataset_grefexp
 import bleu_scorer
 import rouge_scorer
 import util
-from util import MAX_WORDS
 from util import IMG_HEIGHT, IMG_WIDTH, IMG_SHAPE, IMG_CHANNELS
 from keras import applications
 
@@ -35,6 +34,7 @@ def build_model(**params):
     USE_CGRU = params['use_cgru']
     CGRU_SIZE = 1024
     REDUCE_MEAN = True
+    max_words = params['max_words']
 
     if CNN == 'vgg16':
         cnn = applications.vgg16.VGG16(include_top=INCLUDE_TOP)
@@ -49,7 +49,7 @@ def build_model(**params):
     # left, top, right, bottom, (box area / image area)
     input_ctx = layers.Input(batch_shape=(BATCH_SIZE, 5))
     ctx = layers.BatchNormalization()(input_ctx)
-    repeat_ctx = layers.RepeatVector(MAX_WORDS)(ctx)
+    repeat_ctx = layers.RepeatVector(max_words)(ctx)
 
     # Global Image featuers (convnet output for the whole image)
     input_img_global = layers.Input(batch_shape=(BATCH_SIZE, IMG_HEIGHT, IMG_WIDTH, IMG_CHANNELS))
@@ -72,7 +72,7 @@ def build_model(**params):
     image_global = layers.BatchNormalization()(image_global)
     image_global = layers.Dense(WORDVEC_SIZE/2, activation=ACTIVATION)(image_global)
     image_global = layers.BatchNormalization()(image_global)
-    image_global = layers.RepeatVector(MAX_WORDS)(image_global)
+    image_global = layers.RepeatVector(max_words)(image_global)
 
     # Local Image featuers (convnet output for just the bounding box)
     input_img_local = layers.Input(batch_shape=(BATCH_SIZE, IMG_HEIGHT, IMG_WIDTH, IMG_CHANNELS))
@@ -95,12 +95,12 @@ def build_model(**params):
     image_local = layers.BatchNormalization()(image_local)
     image_local = layers.Dense(WORDVEC_SIZE/2, activation=ACTIVATION)(image_local)
     image_local = layers.BatchNormalization()(image_local)
-    image_local = layers.RepeatVector(MAX_WORDS)(image_local)
+    image_local = layers.RepeatVector(max_words)(image_local)
 
     language_model = models.Sequential()
 
-    input_words = layers.Input(batch_shape=(BATCH_SIZE, MAX_WORDS), dtype='int32')
-    language = layers.Embedding(words.VOCABULARY_SIZE, WORDVEC_SIZE, input_length=MAX_WORDS)(input_words)
+    input_words = layers.Input(batch_shape=(BATCH_SIZE, max_words), dtype='int32')
+    language = layers.Embedding(words.VOCABULARY_SIZE, WORDVEC_SIZE, input_length=max_words)(input_words)
 
     # Problem with Keras 2: 
     # TypeError: Tensors in list passed to 'values' of 'ConcatV2' Op have types [uint8, uint8, bool, uint8] that don't all match.
@@ -120,14 +120,15 @@ def build_model(**params):
 
 # TODO: Move batching out to the generic runner
 def training_generator(**params):
+    max_words = params['max_words']
     while True:
         X_global = np.zeros((BATCH_SIZE, IMG_HEIGHT, IMG_WIDTH, IMG_CHANNELS))
         X_local = np.zeros((BATCH_SIZE, IMG_HEIGHT, IMG_WIDTH, IMG_CHANNELS))
-        X_words = np.zeros((BATCH_SIZE, MAX_WORDS), dtype=int)
+        X_words = np.zeros((BATCH_SIZE, max_words), dtype=int)
         X_ctx = np.zeros((BATCH_SIZE,5))
         Y = np.zeros((BATCH_SIZE, words.VOCABULARY_SIZE))
         for i in range(BATCH_SIZE):
-            x, y = process(*dataset_grefexp.example())
+            x, y = process(*dataset_grefexp.example(), **params)
             x_global, x_local, x_words, x_ctx = x
             X_global[i] = x_global
             X_local[i] = x_local
@@ -140,12 +141,13 @@ def training_generator(**params):
 def validation_generator(**params):
     for k in dataset_grefexp.get_all_keys():
         jpg_data, box, texts = dataset_grefexp.get_annotation_for_key(k)
-        x, y = process(jpg_data, box, texts)
+        x, y = process(jpg_data, box, texts, **params)
         x_global, x_local, x_words, x_ctx = x
         yield x_global, x_local, x_ctx, box, texts
 
 
-def process(jpg_data, box, texts):
+def process(jpg_data, box, texts, **params):
+    max_words = params['max_words']
     x_local = util.decode_jpg(jpg_data, crop_to_box=box)
     # hack: scale the box down
     x_global, box = util.decode_jpg(jpg_data, box)
@@ -153,10 +155,10 @@ def process(jpg_data, box, texts):
     indices = words.indices(text)
     idx = np.random.randint(0, len(indices) - 1)
     x_indices = indices[:idx]
-    if len(x_indices) > MAX_WORDS:
-        x_indices = x_indices[-MAX_WORDS:]
+    if len(x_indices) > max_words:
+        x_indices = x_indices[-max_words:]
 
-    x_indices = util.left_pad(x_indices)
+    x_indices = util.left_pad(x_indices, **params)
     y = util.onehot(indices[idx])
 
     x_ctx = img_ctx(box)
@@ -178,7 +180,7 @@ def img_ctx(box):
 def evaluate(model, x_global, x_local, x_ctx, box, texts, verbose=True, **params):
     if verbose:
         util.show(x_global - x_global.min())
-    candidate = predict(model, x_global, x_local, x_ctx, box)
+    candidate = predict(model, x_global, x_local, x_ctx, box, **params)
     candidate = util.strip(candidate)
     references = map(util.strip, texts)
     #print("{} {} ({})".format(likelihood, candidate, references[0]))
@@ -209,9 +211,10 @@ def rouge(candidate, references):
     return rouge_scorer.Rouge().calc_score([candidate], references)
 
 
-def predict(model, x_global, x_local, x_ctx, box):
+def predict(model, x_global, x_local, x_ctx, box, **params):
+    max_words = params['max_words']
     # An entire batch must be run at once, but we only use the first slot in that batch
-    indices = util.left_pad([words.START_TOKEN_IDX])
+    indices = util.left_pad([words.START_TOKEN_IDX], **params)
     x_global = util.expand(x_global, BATCH_SIZE)
     x_local = util.expand(x_local, BATCH_SIZE)
     indices = util.expand(indices, BATCH_SIZE)
@@ -219,7 +222,7 @@ def predict(model, x_global, x_local, x_ctx, box):
 
     # Input is empty padding followed by start token
     output_words = []
-    for i in range(1, MAX_WORDS):
+    for i in range(1, max_words):
         preds = model.predict([x_global, x_local, indices, x_ctx])
         indices = np.roll(indices, -1, axis=1)
         indices[:, -1] = np.argmax(preds[:], axis=1)
@@ -237,7 +240,7 @@ def sample(preds, temperature=1.0):
     return np.argmax(probas)
 
 
-def demo(model):
+def demo(model, **params):
     for f in ['cat.jpg', 'dog.jpg', 'horse.jpg', 'car.jpg']:
         x_global = util.decode_jpg(f)
         height, width, _ = x_global.shape
@@ -245,4 +248,4 @@ def demo(model):
         x_local = util.decode_jpg(f, crop_to_box=box)
         x_ctx = img_ctx(box)
         print("Prediction for {} {}:".format(f, box)),
-        print(predict(model, x_global, x_local, x_ctx, box))
+        print(predict(model, x_global, x_local, x_ctx, box, **params))
