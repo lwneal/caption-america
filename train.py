@@ -34,17 +34,17 @@ def train(model_filename, epochs, batches_per_epoch, batch_size, **params):
     print("Finished training {} epochs".format(epochs))
 
 
-def validate(model, validation_count=5000, **kwargs):
+def validate(model, validation_count=5000, **params):
     g = caption.validation_generator()
     print("Validating on {} examples...".format(validation_count))
     candidate_list = []
     references_list = []
     for _ in range(validation_count):
         validation_example = next(g)
-        c, r = caption.evaluate(model, *validation_example)
+        c, r = caption.evaluate(model, *validation_example, **params)
         print("{} ({})".format(c, r))
         candidate_list.append(c)
         references_list.append(r)
-    scores = caption.get_scores(candidate_list, references_list)
-    print scores
+        scores = caption.get_scores(candidate_list, references_list)
+        print scores
 
