@@ -44,7 +44,7 @@ def get_annotation_for_key(key):
     box = (x0, x0 + width, y0, y0 + height)
     texts = [g['raw'] for g in grefexp['refexps']]
 
-    texts = [spell(strip(t)) for t in texts]
+    texts = [spell(strip(t, strip_end=False)) for t in texts]
 
     category = categories[anno['category_id']]
     return jpg_data, box, texts

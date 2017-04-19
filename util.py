@@ -42,13 +42,14 @@ def right_pad(indices, **params):
     return res
 
 
-def strip(text):
+def strip(text, strip_end=True):
     # Remove the START_TOKEN
     text = text.replace('000', '')
-    # Remove all text after the first END_TOKEN
-    end_idx = text.find('001')
-    if end_idx >= 0:
-        text = text[:end_idx]
+    if strip_end:
+        # Remove all text after the first END_TOKEN
+        end_idx = text.find('001')
+        if end_idx >= 0:
+            text = text[:end_idx]
     # Remove non-alphanumeric characters and lowercase everything
     return re.sub(r'\W+', ' ', text.lower()).strip()
 

@@ -154,7 +154,7 @@ def process(jpg_data, box, texts, **params):
     x_global, box = util.decode_jpg(jpg_data, box)
     text = util.strip(random.choice(texts))
     indices = words.indices(text)
-    idx = np.random.randint(0, len(indices) - 1)
+    idx = np.random.randint(1, len(indices))
     x_indices = indices[:idx]
     if len(x_indices) > max_words:
         x_indices = x_indices[-max_words:]
