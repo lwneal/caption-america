@@ -246,14 +246,3 @@ def sample(preds, temperature=1.0):
     preds = exp_preds / np.sum(exp_preds)
     probas = np.random.multinomial(1, preds, 1)
     return np.argmax(probas)
-
-
-def demo(model, **params):
-    for f in ['cat.jpg', 'dog.jpg', 'horse.jpg', 'car.jpg']:
-        x_global = util.decode_jpg(f)
-        height, width, _ = x_global.shape
-        box = (width * .15, width * .85, height * .15, height * .85)
-        x_local = util.decode_jpg(f, crop_to_box=box)
-        x_ctx = img_ctx(box)
-        print("Prediction for {} {}:".format(f, box)),
-        print(predict(model, x_global, x_local, x_ctx, box, **params))

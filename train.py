@@ -26,7 +26,6 @@ def train(model_filename, epochs, batches_per_epoch, batch_size, **params):
     model.compile(optimizer='adam', loss='categorical_crossentropy', metrics=['accuracy'], decay=.01)
     tg = caption.training_generator(**params)
     for i in range(epochs):
-        caption.demo(model, **params)
         validate(model, **params)
         model.fit_generator(tg, batches_per_epoch)
         model.save(model_filename)
