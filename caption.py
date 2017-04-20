@@ -40,6 +40,8 @@ def build_model(**params):
         cnn = applications.vgg16.VGG16(include_top=INCLUDE_TOP)
     elif CNN == 'resnet':
         cnn = applications.resnet50.ResNet50(include_top=INCLUDE_TOP)
+        # Pop the mean pooling layer
+        cnn = models.Model(inputs=cnn.inputs, outputs=cnn.layers[-2].output)
 
     for layer in cnn.layers[:-LEARNABLE_CNN_LAYERS]:
         layer.trainable = False
@@ -50,6 +52,7 @@ def build_model(**params):
     input_ctx = layers.Input(batch_shape=(BATCH_SIZE, 5))
     ctx = layers.BatchNormalization()(input_ctx)
     repeat_ctx = layers.RepeatVector(max_words)(ctx)
+
 
     # Global Image featuers (convnet output for the whole image)
     input_img_global = layers.Input(batch_shape=(BATCH_SIZE, IMG_HEIGHT, IMG_WIDTH, IMG_CHANNELS))
@@ -65,6 +68,8 @@ def build_model(**params):
         image_global = layers.Lambda(lambda x: tf.reduce_mean(x, axis=1))(image_global)
         image_global = layers.Lambda(lambda x: tf.reduce_mean(x, axis=1))(image_global)
     else:
+        image_global = layers.Conv2D(WORDVEC_SIZE/4, (3,3), activation='relu')(image_global)
+        image_global = layers.Conv2D(WORDVEC_SIZE/2, (3,3), activation='relu')(image_global)
         image_global = layers.Flatten()(image_global)
 
     image_global = layers.Concatenate()([image_global, ctx])
@@ -88,6 +93,8 @@ def build_model(**params):
         image_local = layers.Lambda(lambda x: tf.reduce_mean(x, axis=1))(image_local)
         image_local = layers.Lambda(lambda x: tf.reduce_mean(x, axis=1))(image_local)
     else:
+        image_local = layers.Conv2D(WORDVEC_SIZE/4, (3,3), activation='relu')(image_local)
+        image_local = layers.Conv2D(WORDVEC_SIZE/2, (3,3), activation='relu')(image_local)
         image_local = layers.Flatten()(image_local)
 
     image_local = layers.Concatenate()([image_local, ctx])
