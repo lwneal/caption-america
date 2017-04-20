@@ -27,8 +27,6 @@ def decode_jpg(jpg, box=None, crop_to_box=None, preprocess=True):
     if preprocess:
         img = img.resize((224, 224))
     pixels = np.array(img).astype(float)
-    if preprocess:
-        pixels = imagenet_process(pixels)
     if box:
         # Transform a bounding box after resizing
         x0, x1, y0, y1 = box
