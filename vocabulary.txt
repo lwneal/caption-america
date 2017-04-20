@@ -818,7 +818,6 @@ caucasian
 caught
 cauliflower
 caution
-cd
 ceiling
 celebrating
 celebration
@@ -833,10 +832,8 @@ center
 centered
 centerpiece
 central
-centre
 ceramic
 cereal
-chaild
 chain
 chained
 chains
@@ -851,7 +848,6 @@ charcoal
 chardonnay
 charge
 charging
-chari
 chariot
 charred
 chasing
@@ -878,7 +874,6 @@ chestnut
 chevrolet
 chevy
 chewing
-chiar
 chicago
 chick
 chicken
@@ -890,14 +885,12 @@ children
 childrens
 childs
 chili
-chilli
 chin
 china
 chinese
 chip
 chipped
 chips
-chir
 chives
 chocolate
 chocolates
@@ -933,7 +926,6 @@ clasps
 class
 classic
 classroom
-claus
 clay
 clean
 cleaned
@@ -1067,14 +1059,12 @@ contains
 content
 contents
 control
-controlers
 controller
 controllers
 controls
 conversation
 converse
 conversing
-convertable
 convertible
 conveyor
 cook
@@ -1355,7 +1345,6 @@ doll
 dollar
 dolls
 dolly
-domaine
 don
 donald
 done
