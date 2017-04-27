@@ -31,6 +31,8 @@ def expand(x, batch_size=None):
 def left_pad(indices, **params):
     max_words = params['max_words']
     res = np.zeros(max_words, dtype=int)
+    if len(indices) > max_words:
+        indices = indices[-max_words:]
     res[max_words - len(indices):] = indices
     return res
 

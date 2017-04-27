@@ -14,5 +14,5 @@ def spell(text):
             words.append(suggestions[0])
         else:
             #print("Unknown word: {}".format(w))
-            words.append(w)
+            words.append('unk')
     return ' '.join(words)
