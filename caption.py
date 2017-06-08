@@ -201,7 +201,10 @@ def get_scores(candidate_list, references_list):
     def no_smoothing(p_n, **kwargs):
         return p_n
     scores['nltk_bleu1'] = bleu_score.corpus_bleu(references_list, candidate_list, smoothing_function=no_smoothing, weights=[1.0])
-    scores['nltk_bleu2'] = bleu_score.corpus_bleu(references_list, candidate_list, smoothing_function=no_smoothing, weights=[.5, .5])
+
+    scores['nltk_bleu2'] = 0
+    if len(candidate_list[0]) > 1:
+        scores['nltk_bleu2'] = bleu_score.corpus_bleu(references_list, candidate_list, smoothing_function=no_smoothing, weights=[.5, .5])
     scores['alt_bleu1'] = np.mean([bleu(c, ref, n=1) for c, ref in zip(candidate_list, references_list)])
     scores['alt_bleu2'] = np.mean([bleu(c, ref, n=2) for c, ref in zip(candidate_list, references_list)])
     scores['rouge'] = np.mean([rouge(c, ref) for c, ref in zip(candidate_list, references_list)])
