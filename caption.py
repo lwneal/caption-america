@@ -108,7 +108,7 @@ def build_model(**params):
     language_model = models.Sequential()
 
     input_words = layers.Input(batch_shape=(BATCH_SIZE, max_words), dtype='int32')
-    language = layers.Embedding(words.VOCABULARY_SIZE, WORDVEC_SIZE, input_length=max_words, mask_zero=True)(input_words)
+    language = layers.Embedding(words.VOCABULARY_SIZE, WORDVEC_SIZE, input_length=max_words)(input_words)
 
 
     x = layers.concatenate([image_global, image_local, repeat_ctx, language])

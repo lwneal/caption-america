@@ -63,16 +63,14 @@ def train_pg(**params):
     model = caption.build_model(**params)
     model.load_weights(model_filename)
     model.summary()
-    model.compile(optimizer='adam', loss='sparse_categorical_crossentropy', metrics=['accuracy'], decay=.01)
-
+    model.compile(optimizer='sgd', loss='sparse_categorical_crossentropy', metrics=['accuracy'], decay=.01, learning_rate=.001)
 
     tg = caption.pg_training_generator(**params)
 
     for i in range(epochs):
         for _ in range(100):
-            pg_x, pg_y = generate_pg_example(model, tg, **params)
-            nonzero = (pg_y > 0) * 1.0
-            losses = model.train_on_batch(pg_x, pg_y, sample_weight=nonzero)
+            pg_x, pg_y, rewards = generate_pg_example(model, tg, **params)
+            losses = model.train_on_batch(pg_x, pg_y, sample_weight=rewards)
             print(losses)
         model.save(model_filename)
         validate(model, **params)
@@ -80,7 +78,7 @@ def train_pg(**params):
 
 def generate_pg_example(model, training_gen, **params):
     batch_size = params['batch_size']
-    horizon = np.random.randint(1, 5)
+    horizon = np.random.randint(1)
     rollouts = 10
     sampling_temperature = 0.3
     x, y, reference_texts = next(training_gen)
@@ -95,15 +93,17 @@ def generate_pg_example(model, training_gen, **params):
     for _ in range(horizon):
         x_words = np.roll(x_words, -1, axis=1)
         action_distribution = model.predict([x_glob, x_loc, x_words, x_ctx])
-        x_words[:, -1] = [caption.sample(s, temperature=sampling_temperature) for s in action_distribution]
+        x_words[:, -1] = [caption.sample(s, temperature=.0) for s in action_distribution]
 
-    # Now what's the best word? Not the ground truth.
+    # Now what's the best word? Probably not the ground truth; that ship has sailed
+    # By now we've output a few of our own words
     # Let's decide on the best word by randomly trying a few
     best_next_word = np.zeros(batch_size, dtype=int)
     baseline_words = np.roll(x_words, -1, axis=1)
     baseline_words[:, -1] = best_next_word
     baseline_candidates = [words.words(s).strip('0 ') for s in baseline_words]
-    best_scores = get_scores(baseline_words, reference_texts)
+    baseline_scores = get_scores(baseline_words, reference_texts)
+    best_scores = np.ones_like(baseline_scores) * -1
 
     for r in range(rollouts):
         action_distribution = model.predict([x_glob, x_loc, x_words, x_ctx])
@@ -115,22 +115,25 @@ def generate_pg_example(model, training_gen, **params):
 
         for i in range(batch_size):
             if bleu2_scores[i] > best_scores[i]:
-                print('"{}" raises score from {} to {}'.format(words.words(new_words[i]).strip('0 '), best_scores[i], bleu2_scores[i]))
+                #print('"{}" raises score from {:.2f} to {:.2f}'.format(words.words(new_words[i]).strip('0 '), best_scores[i], bleu2_scores[i]))
                 best_scores[i] = bleu2_scores[i]
                 best_next_word[i] = new_words[i, -1]
-    print("Finished {} rollouts".format(r))
 
     # Display
     ml_words = words.words(np.argmax(y, axis=-1)).split()
     pg_words = words.words(best_next_word).split()
+    rewards = best_scores - baseline_scores
     for i in range(batch_size):
-        print("{} ... {} ({:.2f}) {}".format(words.words(x_words[i]), pg_words[i], best_scores[i], reference_texts[i]))
+        print("{} ... {} ({:.2f}) {}".format(words.words(x_words[i]), pg_words[i], rewards[i], reference_texts[i]))
 
-    return x, best_next_word
+    return x, best_next_word, rewards
 
 
 def get_scores(x_words, reference_texts):
-    candidates = [words.words(s).replace('001', '').replace('0', '').strip(' ') for s in x_words]
-    return [caption.bleu(c, r)[1] for (c, r) in zip(candidates, reference_texts)]
+    candidates = [words.words(s).replace('001', '').replace('0', '').strip(' ') + ' 001' for s in x_words]
+    refs = [[r + ' 001' for r in reflist] for reflist in reference_texts]
+    bleu2 = np.array([caption.bleu(c, r)[1] for (c, r) in zip(candidates, refs)])
+    rouge = np.array([caption.rouge(c, r) for (c, r) in zip(candidates, refs)])
+    return bleu2 + rouge
 
 
