@@ -99,14 +99,15 @@ def combine_images(generated_images):
     return image
 
 
-def draw_box(img, box, color=1.0):
+def draw_box(img, box, color=1.0, W=3):
     x0, x1, y0, y1 = (int(val) for val in box)
     height, width, channels = img.shape
-    x0 = np.clip(x0, 0, width-1)
-    x1 = np.clip(x1, 0, width-1)
-    y0 = np.clip(y0, 0, height-1)
-    y1 = np.clip(y1, 0, height-1)
-    img[y0:y1,x0] = color
-    img[y0:y1,x1] = color
-    img[y0,x0:x1] = color
-    img[y1,x0:x1] = color
+    x0 = np.clip(x0, 0, width-1-W)
+    x1 = np.clip(x1, 0, width-1-W)
+    y0 = np.clip(y0, 0, height-1-W)
+    y1 = np.clip(y1, 0, height-1-W)
+    for i in range(W):
+        img[y0+i:y1+i,x0+i] = color
+        img[y0+i:y1+i,x1+i] = color
+        img[y0+i,x0+i:x1+i] = color
+        img[y1+i,x0+i:x1+i] = color

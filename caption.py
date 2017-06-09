@@ -136,7 +136,7 @@ def training_generator(**params):
         X_ctx = np.zeros((BATCH_SIZE,5))
         Y = np.zeros((BATCH_SIZE, words.VOCABULARY_SIZE))
         for i in range(BATCH_SIZE):
-            x, y = process(*dataset_grefexp.example(), **params)
+            x, y, box = process(*dataset_grefexp.example(), **params)
             x_global, x_local, x_words, x_ctx = x
             X_global[i] = x_global
             X_local[i] = x_local
@@ -149,7 +149,7 @@ def training_generator(**params):
 def validation_generator(**params):
     for k in dataset_grefexp.get_all_keys():
         jpg_data, box, texts = dataset_grefexp.get_annotation_for_key(k)
-        x, y = process(jpg_data, box, texts, **params)
+        x, y, box = process(jpg_data, box, texts, **params)
         x_global, x_local, x_words, x_ctx = x
         yield x_global, x_local, x_ctx, box, texts
 
@@ -170,7 +170,7 @@ def process(jpg_data, box, texts, **params):
     y = util.onehot(indices[idx])
 
     x_ctx = img_ctx(box)
-    return [x_global, x_local, x_indices, x_ctx], y
+    return [x_global, x_local, x_indices, x_ctx], y, box
 
 
 def img_ctx(box):
@@ -187,7 +187,9 @@ def img_ctx(box):
 
 def evaluate(model, x_global, x_local, x_ctx, box, texts, verbose=True, **params):
     if verbose:
-        util.show(x_global - x_global.min())
+        img = x_global - x_global.min()
+        util.show(img, box=box)
+        util.show(x_local)
     candidate = predict(model, x_global, x_local, x_ctx, box, **params)
     candidate = util.strip(candidate)
     references = map(util.strip, texts)
