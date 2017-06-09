@@ -83,6 +83,9 @@ def generate_pg_example(model, training_gen, **params):
     sampling_temperature = 0.3
     x, y, reference_texts = next(training_gen)
 
+    # HACK: Count the end token
+    reference_texts = [[r + ' 001' for r in reflist] for reflist in reference_texts]
+
     # Roll out N random trajectories
     # For each one, get a BLEU-2 score
     # Choose the one with the highest BLEU-2
@@ -129,9 +132,8 @@ def generate_pg_example(model, training_gen, **params):
     return x, best_next_word, rewards
 
 
-def get_scores(x_words, reference_texts):
+def get_scores(x_words, refs):
     candidates = [words.words(s).replace('001', '').replace('0', '').strip(' ') + ' 001' for s in x_words]
-    refs = [[r + ' 001' for r in reflist] for reflist in reference_texts]
     bleu2 = np.array([caption.bleu(c, r)[1] for (c, r) in zip(candidates, refs)])
     rouge = np.array([caption.rouge(c, r) for (c, r) in zip(candidates, refs)])
     return bleu2 + rouge
