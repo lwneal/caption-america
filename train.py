@@ -71,7 +71,8 @@ def train_pg(**params):
     for i in range(epochs):
         for _ in range(100):
             pg_x, pg_y = generate_pg_example(model, tg, **params)
-            losses = model.train_on_batch(pg_x, pg_y)
+            nonzero = (pg_y > 0) * 1.0
+            losses = model.train_on_batch(pg_x, pg_y, sample_weight=nonzero)
             print(losses)
         model.save(model_filename)
         validate(model, **params)
