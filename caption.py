@@ -108,12 +108,8 @@ def build_model(**params):
     language_model = models.Sequential()
 
     input_words = layers.Input(batch_shape=(BATCH_SIZE, max_words), dtype='int32')
-    language = layers.Embedding(words.VOCABULARY_SIZE, WORDVEC_SIZE, input_length=max_words)(input_words)
+    language = layers.Embedding(words.VOCABULARY_SIZE, WORDVEC_SIZE, input_length=max_words, mask_zero=True)(input_words)
 
-    # Problem with Keras 2: 
-    # TypeError: Tensors in list passed to 'values' of 'ConcatV2' Op have types [uint8, uint8, bool, uint8] that don't all match.
-    # Masking doesn't work along with concatenation.
-    # How do I get mask_zero=True working in the embed layer?
 
     x = layers.concatenate([image_global, image_local, repeat_ctx, language])
     if RNN_TYPE == 'LSTM':
