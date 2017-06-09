@@ -146,6 +146,29 @@ def training_generator(**params):
         yield [X_global, X_local, X_words, X_ctx], Y
 
 
+# TODO: merge back into training_generator for sanity
+def pg_training_generator(**params):
+    max_words = params['max_words']
+    while True:
+        X_global = np.zeros((BATCH_SIZE, IMG_HEIGHT, IMG_WIDTH, IMG_CHANNELS))
+        X_local = np.zeros((BATCH_SIZE, IMG_HEIGHT, IMG_WIDTH, IMG_CHANNELS))
+        X_words = np.zeros((BATCH_SIZE, max_words), dtype=int)
+        X_ctx = np.zeros((BATCH_SIZE,5))
+        Y = np.zeros((BATCH_SIZE, words.VOCABULARY_SIZE))
+        reference_texts = []
+        for i in range(BATCH_SIZE):
+            jpg_data, bbox, reference_text = dataset_grefexp.example()
+            x, y, box = process(jpg_data, bbox, reference_text, **params)
+            reference_texts.append(reference_text)
+            x_global, x_local, x_words, x_ctx = x
+            X_global[i] = x_global
+            X_local[i] = x_local
+            X_words[i] = x_words
+            X_ctx[i] = x_ctx
+            Y[i] = y
+        yield [X_global, X_local, X_words, X_ctx], Y, reference_texts
+
+
 def validation_generator(**params):
     for k in dataset_grefexp.get_all_keys():
         jpg_data, box, texts = dataset_grefexp.get_annotation_for_key(k)
