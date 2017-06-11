@@ -14,10 +14,12 @@ from pprint import pprint
 
 
 def train(**params):
-    if params['training_mode'] == 'maximum-likelihood':
+    if params['mode'] == 'maximum-likelihood':
         train_ml(**params)
-    else:
+    elif params['mode'] == 'policy-grdient':
         train_pg(**params)
+    else:
+        validate(**params)
 
 
 def train_ml(model_filename, epochs, batches_per_epoch, batch_size, **params):
@@ -40,7 +42,13 @@ def train_ml(model_filename, epochs, batches_per_epoch, batch_size, **params):
     print("Finished training {} epochs".format(epochs))
 
 
-def validate(model, validation_count=5000, **params):
+def validate(model=None, **params):
+    validation_count = params['validation_count']
+
+    if model == None:
+        model = caption.build_model(**params)
+        model.load_weights(params['model_filename'])
+
     g = caption.validation_generator(**params)
     print("Validating on {} examples...".format(validation_count))
     candidate_list = []
@@ -48,11 +56,13 @@ def validate(model, validation_count=5000, **params):
     for _ in range(validation_count):
         validation_example = next(g)
         c, r = caption.evaluate(model, *validation_example, **params)
-        print("{} ({})".format(c, r))
+        print("Candidate: {}".format(c))
+        print("Refs: {}".format(r))
         candidate_list.append(c)
         references_list.append(r)
         scores = caption.get_scores(candidate_list, references_list)
-        print scores
+        for s in scores:
+            print("{}\t{:.3f}".format(s, scores[s]))
 
 
 def train_pg(**params):

@@ -15,7 +15,7 @@ Options:
       --verbose=<verbose>               If True, output images and debug info [default: False].
       --max_words=<words>               Max number of words to predict in an output sentence [default: 10]
       --reduce_visual=<reduce>          If True, mean-pool output of the CNN before feeding to dense layer [default: True]
-      --training-mode=<m>               One of: maximum-likelihood, policy-gradient [default: maximum-likelihood]
+      --mode=<m>                        One of: validate, maximum-likelihood, policy-gradient [default: maximum-likelihood]
 """
 from docopt import docopt
 from pprint import pprint
