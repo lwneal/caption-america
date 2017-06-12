@@ -106,7 +106,7 @@ def generate_pg_example(model, training_gen, **params):
     for _ in range(horizon):
         x_words = np.roll(x_words, -1, axis=1)
         action_distribution = model.predict([x_glob, x_loc, x_words, x_ctx])
-        x_words[:, -1] = [caption.sample(s, temperature=.0) for s in action_distribution]
+        x_words[:, -1] = [caption.sample(s, temperature=.5) for s in action_distribution]
 
     # Now what's the best word? Probably not the ground truth; that ship has sailed
     # By now we've output a few of our own words
