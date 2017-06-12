@@ -16,7 +16,7 @@ from pprint import pprint
 def train(**params):
     if params['mode'] == 'maximum-likelihood':
         train_ml(**params)
-    elif params['mode'] == 'policy-grdient':
+    elif params['mode'] == 'policy-gradient':
         train_pg(**params)
     else:
         validate(**params)
