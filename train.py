@@ -97,6 +97,7 @@ def train_pg(**params):
 
 def generate_pg_example(model, training_gen, **params):
     batch_size = params['batch_size']
+    best_of_n = params['best_of_n']
     sample_temp = 1.0
 
     # Start at a random word somewhere in a random training example
@@ -135,7 +136,7 @@ def generate_pg_example(model, training_gen, **params):
     sample_preds = model.predict([x_glob, x_loc, x_words, x_ctx])
     best_scores = np.zeros(batch_size)
     best_words = np.zeros(batch_size, dtype=int)
-    for _ in range(10):
+    for _ in range(best_of_n):
         sampled_word = [caption.sample(p, temperature=sample_temp) for p in sample_preds]
         sample_score = rollout_sample(sampled_word) - baseline_score
         for i in range(batch_size):

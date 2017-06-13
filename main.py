@@ -19,6 +19,7 @@ Options:
       --score=<s>                       One of: bleu2, bleu4, rouge, all [default: all]
       --learning_rate=<s>               Positive small float value [default: .01]
       --decay=<s>                       Positive small float value [default: .01]
+      --best_of_n=<s>                   Integer for policy-gradient, pick highest score out of N [default: 1]
 """
 from docopt import docopt
 from pprint import pprint
