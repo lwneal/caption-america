@@ -75,7 +75,7 @@ def train_pg(**params):
     model = caption.build_model(**params)
     model.load_weights(model_filename)
     model.summary()
-    model.compile(optimizer='adam', loss='sparse_categorical_crossentropy', metrics=['accuracy'], decay=.01)
+    model.compile(optimizer='adam', loss='sparse_categorical_crossentropy', metrics=['accuracy'], decay=.01, learning_rate=.001)
 
     tg = caption.pg_training_generator(**params)
 
