@@ -67,6 +67,7 @@ def validate(model=None, **params):
 
 
 def train_pg(**params):
+    batches_per_epoch = params['batches_per_epoch']
     model_filename = params['model_filename']
     batch_size = params['batch_size']
     epochs = params['epochs']
@@ -79,7 +80,7 @@ def train_pg(**params):
     tg = caption.pg_training_generator(**params)
 
     for i in range(epochs):
-        for _ in range(100):
+        for _ in range(batches_per_epoch):
             pg_x, pg_y, rewards = generate_pg_example(model, tg, **params)
             losses = model.train_on_batch(pg_x, pg_y, sample_weight=rewards)
             print(losses)
@@ -89,7 +90,7 @@ def train_pg(**params):
 
 def generate_pg_example(model, training_gen, **params):
     batch_size = params['batch_size']
-    sample_temp = 0.7
+    sample_temp = 1.0
 
     # Start at a random word somewhere in a random training example
     x, y, reference_texts = next(training_gen)
