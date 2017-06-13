@@ -17,6 +17,8 @@ Options:
       --reduce_visual=<reduce>          If True, mean-pool output of the CNN before feeding to dense layer [default: True]
       --mode=<m>                        One of: validate, maximum-likelihood, policy-gradient [default: maximum-likelihood]
       --score=<s>                       One of: bleu2, bleu4, rouge, all [default: all]
+      --learning_rate=<s>               Positive small float value [default: .01]
+      --decay=<s>                       Positive small float value [default: .01]
 """
 from docopt import docopt
 from pprint import pprint

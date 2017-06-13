@@ -1,7 +1,7 @@
 import os
 import time
 import gpumemory
-from keras import models
+from keras import models, optimizers
 import caption
 
 import os
@@ -23,6 +23,9 @@ def train(**params):
 
 
 def train_ml(model_filename, epochs, batches_per_epoch, batch_size, **params):
+    decay = params['decay']
+    learning_rate = params['learning_rate']
+
     if model_filename == 'default_model':
         model_filename = 'model.caption.{}.h5'.format(int(time.time()))
     model = caption.build_model(**params)
@@ -33,7 +36,8 @@ def train_ml(model_filename, epochs, batches_per_epoch, batch_size, **params):
         #model = models.load_model(model_filename)
 
     model.summary()
-    model.compile(optimizer='adam', loss='categorical_crossentropy', metrics=['accuracy'], decay=.01)
+    opt = optimizers.Adam(decay=decay, lr=learning_rate)
+    model.compile(optimizer=opt, loss='categorical_crossentropy', metrics=['accuracy'])
     tg = caption.training_generator(**params)
     for i in range(epochs):
         validate(model, **params)
@@ -71,11 +75,14 @@ def train_pg(**params):
     model_filename = params['model_filename']
     batch_size = params['batch_size']
     epochs = params['epochs']
+    decay = params['decay']
+    learning_rate = params['learning_rate']
 
     model = caption.build_model(**params)
     model.load_weights(model_filename)
     model.summary()
-    model.compile(optimizer='adam', loss='sparse_categorical_crossentropy', metrics=['accuracy'], decay=.01, learning_rate=.001)
+    opt = optimizers.Adam(decay=decay, lr=learning_rate)
+    model.compile(optimizer=opt, loss='sparse_categorical_crossentropy', metrics=['accuracy'])
 
     tg = caption.pg_training_generator(**params)
 
