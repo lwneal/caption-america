@@ -112,23 +112,31 @@ def generate_pg_example(model, training_gen, **params):
     print("\t{} ({:.4f})").format(words.words(baseline_rollout[0]), baseline_score[0])
 
 
+    def rollout_sample(sampled_word):
+        # Roll out the sampled predictions to compare them with the baseline
+        sample_rollout = np.zeros((batch_size, prev_steps + rollout_steps), dtype=int)
+        sample_rollout[:, :prev_steps] = x_words
+        sample_rollout[:, prev_steps] = sampled_word
+        for i in range(prev_steps + 1, prev_steps + rollout_steps):
+            preds = model.predict([x_glob, x_loc, sample_rollout[:, i - prev_steps:i], x_ctx])
+            sample_rollout[:, i] = np.argmax(preds, axis=1)
+        sample_score = get_scores(sample_rollout, reference_texts, **params)
+        print("\t{} ({:+.4f})").format(words.words(sample_rollout[0]), sample_score[0] - baseline_score[0])
+        return sample_score
+
     # Sample Score
     sample_preds = model.predict([x_glob, x_loc, x_words, x_ctx])
-    sampled_word = [caption.sample(p, temperature=sample_temp) for p in sample_preds]
+    best_scores = np.zeros(batch_size)
+    best_words = np.zeros(batch_size, dtype=int)
+    for _ in range(10):
+        sampled_word = [caption.sample(p, temperature=sample_temp) for p in sample_preds]
+        sample_score = rollout_sample(sampled_word) - baseline_score
+        for i in range(batch_size):
+            if sample_score[i] > best_scores[i]:
+                best_words[i] = sampled_word[i]
+                best_scores[i] = sample_score[i]
 
-
-    # Roll out the sampled predictions to compare them with the baseline
-    sample_rollout = np.zeros((batch_size, prev_steps + rollout_steps), dtype=int)
-    sample_rollout[:, :prev_steps] = x_words
-    sample_rollout[:, prev_steps] = sampled_word
-    for i in range(prev_steps + 1, prev_steps + rollout_steps):
-        preds = model.predict([x_glob, x_loc, sample_rollout[:, i - prev_steps:i], x_ctx])
-        sample_rollout[:, i] = np.argmax(preds, axis=1)
-    sample_score = get_scores(sample_rollout, reference_texts, **params)
-    print("\t{} ({:.4f})").format(words.words(sample_rollout[0]), sample_score[0])
-
-    sample_words = np.argmax(sample_preds, axis=1)
-    return x, sample_words, sample_score - baseline_score
+    return x, best_words, best_scores
 
 
 def get_scores(x_words, refs, **params):
