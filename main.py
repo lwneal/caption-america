@@ -16,6 +16,7 @@ Options:
       --max_words=<words>               Max number of words to predict in an output sentence [default: 10]
       --reduce_visual=<reduce>          If True, mean-pool output of the CNN before feeding to dense layer [default: True]
       --mode=<m>                        One of: validate, maximum-likelihood, policy-gradient [default: maximum-likelihood]
+      --score=<s>                       One of: bleu2, bleu4, rouge, all [default: all]
 """
 from docopt import docopt
 from pprint import pprint

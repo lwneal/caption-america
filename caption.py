@@ -218,19 +218,9 @@ def evaluate(model, x_global, x_local, x_ctx, box, texts, verbose=True, **params
 
 def get_scores(candidate_list, references_list):
     scores = {}
-    from nltk.translate import bleu_score
-    def no_smoothing(p_n, **kwargs):
-        return p_n
-    scores['nltk_bleu1'] = -1
-    scores['nltk_bleu2'] = -1
-    try:
-        scores['nltk_bleu1'] = bleu_score.corpus_bleu(references_list, candidate_list, smoothing_function=no_smoothing, weights=[1.0])
-        if len(candidate_list[0]) > 2:
-            scores['nltk_bleu2'] = bleu_score.corpus_bleu(references_list, candidate_list, smoothing_function=no_smoothing, weights=[.5, .5])
-    except:
-        pass
-    scores['alt_bleu1'] = np.mean([bleu(c, ref, n=1) for c, ref in zip(candidate_list, references_list)])
-    scores['alt_bleu2'] = np.mean([bleu(c, ref, n=2) for c, ref in zip(candidate_list, references_list)])
+    scores['bleu1'] = np.mean([bleu(c, ref, n=1) for c, ref in zip(candidate_list, references_list)])
+    scores['bleu2'] = np.mean([bleu(c, ref, n=2) for c, ref in zip(candidate_list, references_list)])
+    scores['bleu4'] = np.mean([bleu(c, ref, n=4) for c, ref in zip(candidate_list, references_list)])
     scores['rouge'] = np.mean([rouge(c, ref) for c, ref in zip(candidate_list, references_list)])
     return scores
 

@@ -118,7 +118,7 @@ def generate_pg_example(model, training_gen, **params):
     baseline_words = np.roll(x_words, -1, axis=1)
     baseline_words[:, -1] = best_next_word
     baseline_candidates = [words.words(s).strip('0 ') for s in baseline_words]
-    baseline_scores = get_scores(baseline_words, reference_texts)
+    baseline_scores = get_scores(baseline_words, reference_texts, **params)
     best_scores = np.ones_like(baseline_scores) * -1
 
     print("{} ...").format(words.words(x_words[0]))
@@ -148,9 +148,20 @@ def generate_pg_example(model, training_gen, **params):
 
 def get_scores(x_words, refs, **params):
     candidates = ints_to_words(x_words, include_end=True)
-    bleu2 = np.array([caption.bleu(c, r)[1] for (c, r) in zip(candidates, refs)])
-    rouge = np.array([caption.rouge(c, r) for (c, r) in zip(candidates, refs)])
-    return bleu2 + rouge
+    def bleu2():
+        return np.array([caption.bleu(c, r)[1] for (c, r) in zip(candidates, refs)])
+    def bleu4():
+        return np.array([caption.bleu(c, r)[3] for (c, r) in zip(candidates, refs)])
+    def rouge():
+        return np.array([caption.rouge(c, r) for (c, r) in zip(candidates, refs)])
+    if params['score'] == 'all':
+        return bleu2() + bleu4() + rouge()
+    elif params['score'] == 'bleu2':
+        return bleu2()
+    elif params['score'] == 'bleu4':
+        return bleu4()
+    elif params['score'] == 'rouge':
+        return rouge()
 
 
 def ints_to_words(x_words):
