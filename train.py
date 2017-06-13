@@ -128,7 +128,7 @@ def generate_pg_example(model, training_gen, **params):
     print("\t{} ({:.4f})").format(words.words(sample_rollout[0]), sample_score[0])
 
     sample_words = np.argmax(sample_preds, axis=1)
-    return x, sample_words, sample_score - 0.5
+    return x, sample_words, sample_score - baseline_score
 
 
 def get_scores(x_words, refs, **params):
