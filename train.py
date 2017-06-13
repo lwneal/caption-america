@@ -53,14 +53,15 @@ def validate(model=None, **params):
     print("Validating on {} examples...".format(validation_count))
     candidate_list = []
     references_list = []
-    for _ in range(validation_count):
+    for i in range(validation_count):
         validation_example = next(g)
         c, r = caption.evaluate(model, *validation_example, **params)
-        print("Candidate: {}".format(c))
-        print("Refs: {}".format(r))
         candidate_list.append(c)
         references_list.append(r)
         scores = caption.get_scores(candidate_list, references_list)
+        print("{}/{}".format(i+1, validation_count))
+        print("Candidate: {}".format(c))
+        print("Refs: {}".format(r))
         for s in scores:
             print("{}\t{:.3f}".format(s, scores[s]))
 
@@ -88,7 +89,7 @@ def train_pg(**params):
 
 def generate_pg_example(model, training_gen, **params):
     batch_size = params['batch_size']
-    explore_temp = 0.5
+    sample_temp = 0.7
 
     # Start at a random word somewhere in a random training example
     x, y, reference_texts = next(training_gen)
@@ -98,54 +99,35 @@ def generate_pg_example(model, training_gen, **params):
 
     print("{} ...").format(words.words(x_words[0]))
 
-    # Baseline score: rollout with temperature 0
+    # Baseline Score: rollout with temperature 0
     prev_steps = x_words.shape[1]
     rollout_steps = 5
-    rollout_words = np.zeros((batch_size, prev_steps + rollout_steps), dtype=int)
-    rollout_words[:, :prev_steps] = x_words
+    baseline_rollout = np.zeros((batch_size, prev_steps + rollout_steps), dtype=int)
+    baseline_rollout[:, :prev_steps] = x_words
     for i in range(prev_steps, prev_steps + rollout_steps):
-        preds = model.predict([x_glob, x_loc, rollout_words, x_ctx])
-        rollout_words[i] = np.argmax(preds, axis=1)
-    print("{}").format(words.words(rollout_words[0]))
+        preds = model.predict([x_glob, x_loc, baseline_rollout[:, i - prev_steps: i], x_ctx])
+        baseline_rollout[:, i] = np.argmax(preds, axis=1)
+    baseline_score = get_scores(baseline_rollout, reference_texts, **params)
+    print("\t{} ({:.4f})").format(words.words(baseline_rollout[0]), baseline_score[0])
 
 
-    """
-    best_next_word = np.zeros(batch_size, dtype=int)
-    baseline_words = np.roll(x_words, -1, axis=1)
-    baseline_words[:, -1] = best_next_word
-    baseline_candidates = [words.words(s).strip('0 ') for s in baseline_words]
-    baseline_scores = get_scores(baseline_words, reference_texts, **params)
-    best_scores = np.ones_like(baseline_scores) * -1
-    """
+    # Sample Score
+    sample_preds = model.predict([x_glob, x_loc, x_words, x_ctx])
+    sampled_word = [caption.sample(p, temperature=sample_temp) for p in sample_preds]
 
-    # Take a random action
-    preds = model.predict([x_glob, x_loc, x_words, x_ctx])
-    new_words[:, -1] = [caption.sample(s, temperature=explore_temp) for s in action_distribution]
-    new_words = np.roll(x_words, -1, axis=1)
 
-    print("{} ...").format(words.words(x_words[0]))
-    for r in range(rollouts):
-        action_distribution = model.predict([x_glob, x_loc, x_words, x_ctx])
-        new_words = np.roll(x_words, -1, axis=1)
-        new_words[:, -1] = [caption.sample(s, temperature=rollout_temp) for s in action_distribution]
-        
-        word = words.words(new_words[:1, -1])
-        print('\t... {}'.format(word))
+    # Roll out the sampled predictions to compare them with the baseline
+    sample_rollout = np.zeros((batch_size, prev_steps + rollout_steps), dtype=int)
+    sample_rollout[:, :prev_steps] = x_words
+    sample_rollout[:, prev_steps] = sampled_word
+    for i in range(prev_steps + 1, prev_steps + rollout_steps):
+        preds = model.predict([x_glob, x_loc, sample_rollout[:, i - prev_steps:i], x_ctx])
+        sample_rollout[:, i] = np.argmax(preds, axis=1)
+    sample_score = get_scores(sample_rollout, reference_texts, **params)
+    print("\t{} ({:.4f})").format(words.words(sample_rollout[0]), sample_score[0])
 
-        # TODO: at this point, roll all the way out with low temperature
-        # Evaluate each sentence with it's extra word
-        bleu2_scores = get_scores(new_words, reference_texts, **params)
-        for i in range(batch_size):
-            if bleu2_scores[i] > best_scores[i]:
-                best_scores[i] = bleu2_scores[i]
-                best_next_word[i] = new_words[i, -1]
-
-    # Display
-    ml_words = words.words(np.argmax(y, axis=-1)).split()
-    pg_words = words.words(best_next_word).split()
-    rewards = best_scores - baseline_scores
-
-    return x, best_next_word, rewards
+    sample_words = np.argmax(sample_preds, axis=1)
+    return x, sample_words, sample_score - baseline_score
 
 
 def get_scores(x_words, refs, **params):
@@ -166,8 +148,8 @@ def get_scores(x_words, refs, **params):
         return rouge()
 
 
-def ints_to_words(x_words):
-    return [clean_text(words.words(s)) for s in x_words]
+def ints_to_words(x_words, **kwargs):
+    return [clean_text(words.words(s), **kwargs) for s in x_words]
 
 
 def clean_text(s, include_end=False):

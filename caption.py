@@ -49,13 +49,13 @@ def build_model(**params):
     # Context Vector input
     # normalized to [0,1] the values:
     # left, top, right, bottom, (box area / image area)
-    input_ctx = layers.Input(batch_shape=(BATCH_SIZE, 5))
+    input_ctx = layers.Input(shape=(5,))
     ctx = layers.BatchNormalization()(input_ctx)
     repeat_ctx = layers.RepeatVector(max_words)(ctx)
 
 
     # Global Image featuers (convnet output for the whole image)
-    input_img_global = layers.Input(batch_shape=(BATCH_SIZE, IMG_HEIGHT, IMG_WIDTH, IMG_CHANNELS))
+    input_img_global = layers.Input(shape=(IMG_HEIGHT, IMG_WIDTH, IMG_CHANNELS))
     image_global = cnn(input_img_global)
 
     # Add a residual CGRU layer
@@ -81,7 +81,7 @@ def build_model(**params):
     image_global = layers.RepeatVector(max_words)(image_global)
 
     # Local Image featuers (convnet output for just the bounding box)
-    input_img_local = layers.Input(batch_shape=(BATCH_SIZE, IMG_HEIGHT, IMG_WIDTH, IMG_CHANNELS))
+    input_img_local = layers.Input(shape=(IMG_HEIGHT, IMG_WIDTH, IMG_CHANNELS))
     image_local = cnn(input_img_local)
 
     if USE_CGRU:
@@ -107,7 +107,7 @@ def build_model(**params):
 
     language_model = models.Sequential()
 
-    input_words = layers.Input(batch_shape=(BATCH_SIZE, max_words), dtype='int32')
+    input_words = layers.Input(shape=(max_words,), dtype='int32')
     language = layers.Embedding(words.VOCABULARY_SIZE, WORDVEC_SIZE, input_length=max_words)(input_words)
 
 
@@ -240,10 +240,10 @@ def predict(model, x_global, x_local, x_ctx, box, **params):
     max_words = params['max_words']
     # An entire batch must be run at once, but we only use the first slot in that batch
     indices = util.left_pad([words.START_TOKEN_IDX], **params)
-    x_global = util.expand(x_global, BATCH_SIZE)
-    x_local = util.expand(x_local, BATCH_SIZE)
-    indices = util.expand(indices, BATCH_SIZE)
-    x_ctx = util.expand(x_ctx, BATCH_SIZE)
+    x_global = util.expand(x_global, 1)
+    x_local = util.expand(x_local, 1)
+    indices = util.expand(indices, 1)
+    x_ctx = util.expand(x_ctx, 1)
 
     # Input is empty padding followed by start token
     output_words = []
