@@ -88,29 +88,32 @@ def train_pg(**params):
 
 def generate_pg_example(model, training_gen, **params):
     batch_size = params['batch_size']
-    horizon = np.random.randint(1)
+    horizon = 1
     rollouts = 10
-    sampling_temperature = 0.3
-    x, y, reference_texts = next(training_gen)
+    explore_temp = 0.5
 
-    # HACK: Count the end token
+    # Start at a random word somewhere in a random training example
+    x, y, reference_texts = next(training_gen)
+    x_glob, x_loc, x_words, x_ctx = x
+    # HACK: Include the end token as a word
     reference_texts = [[r + ' 001' for r in reflist] for reflist in reference_texts]
 
-    # Roll out N random trajectories
-    # For each one, get a BLEU-2 score
-    # Choose the one with the highest BLEU-2
-    # Turn it into a sequence of training examples!
-    x_glob, x_loc, x_words, x_ctx = x
-
-    # Wander outside of the training set
+    # Take one or more steps outside of the training data, based on the current policy
     for _ in range(horizon):
         x_words = np.roll(x_words, -1, axis=1)
         action_distribution = model.predict([x_glob, x_loc, x_words, x_ctx])
-        x_words[:, -1] = [caption.sample(s, temperature=.5) for s in action_distribution]
+        x_words[:, -1] = np.argmax(action_distribution, axis=1)
 
-    # Now what's the best word? Probably not the ground truth; that ship has sailed
-    # By now we've output a few of our own words
-    # Let's decide on the best word by randomly trying a few
+    print("State is: {}".format(ints_to_words(x_words)))
+    import pdb; pdb.set_trace()
+
+    # Now take a random action to explore the policy space
+    sample_words[:, -1] = [caption.sample(s, temperature=explore_temp) for s in action_distribution]
+
+    # Now complete a rollout
+
+    # Now we need to explore many possible future policies and choose the best one
+    # To do that, perform a number of rollouts
     best_next_word = np.zeros(batch_size, dtype=int)
     baseline_words = np.roll(x_words, -1, axis=1)
     baseline_words[:, -1] = best_next_word
@@ -118,17 +121,20 @@ def generate_pg_example(model, training_gen, **params):
     baseline_scores = get_scores(baseline_words, reference_texts)
     best_scores = np.ones_like(baseline_scores) * -1
 
+    print("{} ...").format(words.words(x_words[0]))
     for r in range(rollouts):
         action_distribution = model.predict([x_glob, x_loc, x_words, x_ctx])
         new_words = np.roll(x_words, -1, axis=1)
-        new_words[:, -1] = [caption.sample(s, temperature=sampling_temperature) for s in action_distribution]
+        new_words[:, -1] = [caption.sample(s, temperature=rollout_temp) for s in action_distribution]
+        
+        word = words.words(new_words[:1, -1])
+        print('\t... {}'.format(word))
 
+        # TODO: at this point, roll all the way out with low temperature
         # Evaluate each sentence with it's extra word
-        bleu2_scores = get_scores(new_words, reference_texts)
-
+        bleu2_scores = get_scores(new_words, reference_texts, **params)
         for i in range(batch_size):
             if bleu2_scores[i] > best_scores[i]:
-                #print('"{}" raises score from {:.2f} to {:.2f}'.format(words.words(new_words[i]).strip('0 '), best_scores[i], bleu2_scores[i]))
                 best_scores[i] = bleu2_scores[i]
                 best_next_word[i] = new_words[i, -1]
 
@@ -136,16 +142,25 @@ def generate_pg_example(model, training_gen, **params):
     ml_words = words.words(np.argmax(y, axis=-1)).split()
     pg_words = words.words(best_next_word).split()
     rewards = best_scores - baseline_scores
-    for i in range(batch_size):
-        print("{} ... {} ({:.2f}) {}".format(words.words(x_words[i]), pg_words[i], rewards[i], reference_texts[i]))
 
     return x, best_next_word, rewards
 
 
-def get_scores(x_words, refs):
-    candidates = [words.words(s).replace('001', '').replace('0', '').strip(' ') + ' 001' for s in x_words]
+def get_scores(x_words, refs, **params):
+    candidates = ints_to_words(x_words, include_end=True)
     bleu2 = np.array([caption.bleu(c, r)[1] for (c, r) in zip(candidates, refs)])
     rouge = np.array([caption.rouge(c, r) for (c, r) in zip(candidates, refs)])
     return bleu2 + rouge
 
+
+def ints_to_words(x_words):
+    return [clean_text(words.words(s)) for s in x_words]
+
+
+def clean_text(s, include_end=False):
+    s, _, _ = s.partition('001')
+    s = s.lstrip('0 ').strip()
+    if include_end:
+        return s + ' 001'
+    return s
 
