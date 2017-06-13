@@ -151,12 +151,13 @@ def generate_pg_example(model, training_gen, **params):
     # Sample Score
     sample_preds = model.predict([x_glob, x_loc, x_words, x_ctx])
     best_scores = np.zeros(batch_size)
+    best_scores[:] = -1
     best_words = np.zeros(batch_size, dtype=int)
-    best_words[:] = baseline_rollout[:, prev_steps]
+    #best_words[:] = baseline_rollout[:, prev_steps]
     
     for _ in range(best_of_n):
         sampled_word = [caption.sample(p, temperature=sample_temp) for p in sample_preds]
-        sample_score = rollout_sample(sampled_word)
+        sample_score = rollout_sample(sampled_word) - baseline_score
         for i in range(batch_size):
             if sample_score[i] > best_scores[i]:
                 best_words[i] = sampled_word[i]
