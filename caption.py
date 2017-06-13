@@ -166,7 +166,7 @@ def pg_training_generator(**params):
 
 
 def validation_generator(**params):
-    for k in dataset_grefexp.get_all_keys():
+    for k in sorted(dataset_grefexp.get_all_keys()):
         jpg_data, box, texts = dataset_grefexp.get_annotation_for_key(k)
         x, y, box = process(jpg_data, box, texts, **params)
         x_global, x_local, x_words, x_ctx = x
@@ -207,8 +207,8 @@ def img_ctx(box):
 def evaluate(model, x_global, x_local, x_ctx, box, texts, verbose=True, **params):
     if verbose:
         img = x_global - x_global.min()
-        util.show(img, box=box)
         util.show(x_local)
+        util.show(img, box=box)
     candidate = predict(model, x_global, x_local, x_ctx, box, **params)
     candidate = util.strip(candidate)
     references = map(util.strip, texts)

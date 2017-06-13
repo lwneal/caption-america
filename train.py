@@ -88,8 +88,6 @@ def train_pg(**params):
 
 def generate_pg_example(model, training_gen, **params):
     batch_size = params['batch_size']
-    horizon = 1
-    rollouts = 10
     explore_temp = 0.5
 
     # Start at a random word somewhere in a random training example
@@ -98,28 +96,32 @@ def generate_pg_example(model, training_gen, **params):
     # HACK: Include the end token as a word
     reference_texts = [[r + ' 001' for r in reflist] for reflist in reference_texts]
 
-    # Take one or more steps outside of the training data, based on the current policy
-    for _ in range(horizon):
-        x_words = np.roll(x_words, -1, axis=1)
-        action_distribution = model.predict([x_glob, x_loc, x_words, x_ctx])
-        x_words[:, -1] = np.argmax(action_distribution, axis=1)
+    print("{} ...").format(words.words(x_words[0]))
 
-    print("State is: {}".format(ints_to_words(x_words)))
-    import pdb; pdb.set_trace()
+    # Baseline score: rollout with temperature 0
+    prev_steps = x_words.shape[1]
+    rollout_steps = 5
+    rollout_words = np.zeros((batch_size, prev_steps + rollout_steps), dtype=int)
+    rollout_words[:, :prev_steps] = x_words
+    for i in range(prev_steps, prev_steps + rollout_steps):
+        preds = model.predict([x_glob, x_loc, rollout_words, x_ctx])
+        rollout_words[i] = np.argmax(preds, axis=1)
+    print("{}").format(words.words(rollout_words[0]))
 
-    # Now take a random action to explore the policy space
-    sample_words[:, -1] = [caption.sample(s, temperature=explore_temp) for s in action_distribution]
 
-    # Now complete a rollout
-
-    # Now we need to explore many possible future policies and choose the best one
-    # To do that, perform a number of rollouts
+    """
     best_next_word = np.zeros(batch_size, dtype=int)
     baseline_words = np.roll(x_words, -1, axis=1)
     baseline_words[:, -1] = best_next_word
     baseline_candidates = [words.words(s).strip('0 ') for s in baseline_words]
     baseline_scores = get_scores(baseline_words, reference_texts, **params)
     best_scores = np.ones_like(baseline_scores) * -1
+    """
+
+    # Take a random action
+    preds = model.predict([x_glob, x_loc, x_words, x_ctx])
+    new_words[:, -1] = [caption.sample(s, temperature=explore_temp) for s in action_distribution]
+    new_words = np.roll(x_words, -1, axis=1)
 
     print("{} ...").format(words.words(x_words[0]))
     for r in range(rollouts):
