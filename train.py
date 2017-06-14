@@ -90,7 +90,6 @@ def train_pg(**params):
         for _ in range(batches_per_epoch):
             pg_x, pg_y, rewards = generate_pg_example(model, tg, **params)
             losses = model.train_on_batch(pg_x, pg_y, sample_weight=rewards)
-            print(losses)
         model.save(model_filename)
         validate(model, **params)
 
@@ -99,16 +98,15 @@ def generate_pg_example(model, training_gen, **params):
     batch_size = params['batch_size']
     best_of_n = params['best_of_n']
     sample_temp = 1.0
+    policy_steps = 0
 
     # Start at a random word somewhere in a random training example
     x, y, reference_texts = next(training_gen)
     x_glob, x_loc, x_words, x_ctx = x
     # HACK: Include the end token as a word
     reference_texts = [[r + ' 001' for r in reflist] for reflist in reference_texts]
-    ground_truth = np.copy(x_words)
 
     # Follow policy to get into a real-world state
-    policy_steps = np.random.randint(1, 3)
     x_words = np.roll(x_words, policy_steps, axis=1)
     x_words[:, :policy_steps] = 0
 
@@ -118,53 +116,51 @@ def generate_pg_example(model, training_gen, **params):
         x_words[:, -1] = np.argmax(policy_preds, axis=1)
     true_words = words.words(x_words[0, :-policy_steps]).lstrip('0 ')
     policy_words = words.words(x_words[0, -policy_steps:])
-    print("{} [36m{}[0m ...").format(true_words, policy_words)
+
+    # Sampled Score: score for the sentence plus one more word
+    sampled_words = np.zeros((batch_size, x_words.shape[1] + 1), dtype=int)
+    sampled_words[:, :-1] = x_words
+
+    preds = model.predict(x)
+    preds = np.argsort(preds, axis=1)
+    top_20 = preds[:, -20:]
+
+    sampled_words[:, -1] = top_20[:, 0]
+    baseline_score = get_scores(sampled_words, reference_texts, **params)
+
+    best_score = np.zeros(batch_size)
+    best_word = np.zeros(batch_size, dtype=int)
+    for i in range(20):
+        sampled_words[:, -1] = top_20[:, i]
+        score = get_scores(sampled_words, reference_texts, **params)
+        idxs = np.where(score > best_score)
+        best_score[idxs] = score
+        best_word[idxs] = top_20[:, i]
+
+    epsilon = 0.01  # To avoid rare divide-by-zero
+    reward = best_score - baseline_score + epsilon
+    baseline_word = words.words(top_20[:,0]).split()[0]
+    chosen_word = words.words(best_word).split()[0]
+    print("{} {} {}/{} ({:+.3f})".format(
+        true_words, cyan(policy_words), baseline_word, yellow(chosen_word), reward[0]))
+
+    return x, best_word, reward
 
 
-    # Baseline Score: rollout with temperature 0
-    prev_steps = x_words.shape[1]
-    rollout_steps = 5
-    baseline_rollout = np.zeros((batch_size, prev_steps + rollout_steps), dtype=int)
-    baseline_rollout[:, :prev_steps] = x_words
-    for i in range(prev_steps, prev_steps + rollout_steps):
-        preds = model.predict([x_glob, x_loc, baseline_rollout[:, i - prev_steps: i], x_ctx])
-        baseline_rollout[:, i] = np.argmax(preds, axis=1)
-    baseline_score = get_scores(baseline_rollout, reference_texts, **params)
-    print("Baseline:\t{} ({:.3f})").format(words.words(baseline_rollout[0]).lstrip('0 '), baseline_score[0])
+def cyan(val):
+    return '[36m{}[0m'.format(val)
 
 
-    def rollout_sample(sampled_word):
-        # Roll out the sampled predictions to compare them with the baseline
-        sample_rollout = np.zeros((batch_size, prev_steps + rollout_steps), dtype=int)
-        sample_rollout[:, :prev_steps] = x_words
-        sample_rollout[:, prev_steps] = sampled_word
-        for i in range(prev_steps + 1, prev_steps + rollout_steps):
-            preds = model.predict([x_glob, x_loc, sample_rollout[:, i - prev_steps:i], x_ctx])
-            sample_rollout[:, i] = np.argmax(preds, axis=1)
-        sample_score = get_scores(sample_rollout, reference_texts, **params)
-        left = words.words(sample_rollout[0, :prev_steps]).lstrip('0 ')
-        center = words.words(sample_rollout[0, prev_steps:prev_steps+1])
-        right = words.words(sample_rollout[0, prev_steps+1:])
-        print("Sample:  \t{} [33m{}[0m {} ({:+.3f})").format(left, center, right, sample_score[0] - baseline_score[0])
-        return sample_score
+def yellow(val):
+    return '[33m{}[0m'.format(val)
 
-    # Sample Score
-    sample_preds = model.predict([x_glob, x_loc, x_words, x_ctx])
-    best_scores = np.zeros(batch_size)
-    best_scores[:] = -1
-    best_words = np.zeros(batch_size, dtype=int)
-    #best_words[:] = baseline_rollout[:, prev_steps]
-    
-    for _ in range(best_of_n):
-        sampled_word = [caption.sample(p, temperature=sample_temp) for p in sample_preds]
-        sample_score = rollout_sample(sampled_word) - baseline_score
-        for i in range(batch_size):
-            if sample_score[i] > best_scores[i]:
-                best_words[i] = sampled_word[i]
-                best_scores[i] = sample_score[i]
 
-    print("\t...[33m{}[0m ({:+.3f})".format(words.words([best_words[0]]), best_scores[0]))
-    return x, best_words, best_scores
+def red(val):
+    return '[35m{}[0m'.format(val)
+
+
+def green(val):
+    return '[32m{}[0m'.format(val)
 
 
 def get_scores(x_words, refs, **params):
