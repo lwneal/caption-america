@@ -98,7 +98,7 @@ def generate_pg_example(model, training_gen, **params):
     batch_size = params['batch_size']
     best_of_n = params['best_of_n']
     sample_temp = 1.0
-    policy_steps = 0
+    policy_steps = np.random.randint(3)
 
     # Start at a random word somewhere in a random training example
     x, y, reference_texts = next(training_gen)
