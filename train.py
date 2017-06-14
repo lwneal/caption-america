@@ -128,12 +128,12 @@ def generate_pg_example(model, training_gen, **params):
     for i in range(best_of_n):
         sampled_words[:, -1] = top_n[:, i]
         score = get_scores(sampled_words, reference_texts, **params)
-        idxs = np.where(score > best_score)
-        best_score[idxs] = score
-        best_word[idxs] = top_n[:, i]
+        for j in range(batch_size):
+            if score[j] > best_score[j]:
+                best_score[j] = score[j]
+                best_word[j] = top_n[j, i]
 
-    epsilon = 0.01  # To avoid rare divide-by-zero
-    reward = best_score - baseline_score + epsilon
+    reward = best_score
 
     # Display
     idx = np.random.randint(batch_size)
