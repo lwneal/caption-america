@@ -128,7 +128,7 @@ def generate_pg_example(model, training_gen, **params):
     baseline_rollout[:, :prev_steps] = x_words
     for i in range(prev_steps, prev_steps + rollout_steps):
         preds = model.predict([x_glob, x_loc, baseline_rollout[:, i - prev_steps: i], x_ctx])
-        baseline_rollout[:, i] = [caption.sample(p, temperature=sample_temp) for p in preds]
+        baseline_rollout[:, i] = np.argmax(preds, axis=1)
     baseline_score = get_scores(baseline_rollout, reference_texts, **params)
     print("Baseline:\t{} ({:.3f})").format(words.words(baseline_rollout[0]).lstrip('0 '), baseline_score[0])
 
@@ -140,7 +140,7 @@ def generate_pg_example(model, training_gen, **params):
         sample_rollout[:, prev_steps] = sampled_word
         for i in range(prev_steps + 1, prev_steps + rollout_steps):
             preds = model.predict([x_glob, x_loc, sample_rollout[:, i - prev_steps:i], x_ctx])
-            sample_rollout[:, i] = [caption.sample(p, temperature=sample_temp) for p in preds]
+            sample_rollout[:, i] = np.argmax(preds, axis=1)
         sample_score = get_scores(sample_rollout, reference_texts, **params)
         left = words.words(sample_rollout[0, :prev_steps]).lstrip('0 ')
         center = words.words(sample_rollout[0, prev_steps:prev_steps+1])
@@ -151,12 +151,9 @@ def generate_pg_example(model, training_gen, **params):
     # Sample Score
     sample_preds = model.predict([x_glob, x_loc, x_words, x_ctx])
     best_scores = np.zeros(batch_size)
-    best_scores[:] = 0
+    best_scores[:] = -1
     best_words = np.zeros(batch_size, dtype=int)
-    best_words[:] = baseline_rollout[:, prev_steps]
-
-    # HACK: Ignore baseline
-    baseline_score[:] = 0
+    #best_words[:] = baseline_rollout[:, prev_steps]
     
     for _ in range(best_of_n):
         sampled_word = [caption.sample(p, temperature=sample_temp) for p in sample_preds]
