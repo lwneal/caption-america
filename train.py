@@ -81,7 +81,7 @@ def train_pg(**params):
     model = caption.build_model(**params)
     model.load_weights(model_filename)
     model.summary()
-    opt = optimizers.Adam(decay=decay, lr=learning_rate)
+    opt = optimizers.SGD(decay=decay, lr=learning_rate)
     model.compile(optimizer=opt, loss='sparse_categorical_crossentropy', metrics=['accuracy'])
 
     tg = caption.pg_training_generator(**params)
@@ -98,7 +98,7 @@ def generate_pg_example(model, training_gen, **params):
     batch_size = params['batch_size']
     best_of_n = params['best_of_n']
     sample_temp = 1.0
-    policy_steps = np.random.randint(3)
+    policy_steps = np.random.randint(1, 4)
 
     # Start at a random word somewhere in a random training example
     x, y, reference_texts = next(training_gen)
@@ -107,15 +107,10 @@ def generate_pg_example(model, training_gen, **params):
     reference_texts = [[r + ' 001' for r in reflist] for reflist in reference_texts]
 
     # Follow policy to get into a real-world state
-    x_words = np.roll(x_words, policy_steps, axis=1)
-    x_words[:, :policy_steps] = 0
-
     for _ in range(policy_steps):
         policy_preds = model.predict([x_glob, x_loc, x_words, x_ctx])
         x_words = np.roll(x_words, -1, axis=1)
         x_words[:, -1] = np.argmax(policy_preds, axis=1)
-    true_words = words.words(x_words[0, :-policy_steps]).lstrip('0 ')
-    policy_words = words.words(x_words[0, -policy_steps:])
 
     # Sampled Score: score for the sentence plus one more word
     sampled_words = np.zeros((batch_size, x_words.shape[1] + 1), dtype=int)
@@ -123,26 +118,31 @@ def generate_pg_example(model, training_gen, **params):
 
     preds = model.predict(x)
     preds = np.argsort(preds, axis=1)
-    top_20 = preds[:, -20:]
+    top_n = preds[:, -best_of_n:]
 
-    sampled_words[:, -1] = top_20[:, 0]
+    sampled_words[:, -1] = top_n[:, 0]
     baseline_score = get_scores(sampled_words, reference_texts, **params)
 
     best_score = np.zeros(batch_size)
     best_word = np.zeros(batch_size, dtype=int)
-    for i in range(20):
-        sampled_words[:, -1] = top_20[:, i]
+    for i in range(best_of_n):
+        sampled_words[:, -1] = top_n[:, i]
         score = get_scores(sampled_words, reference_texts, **params)
         idxs = np.where(score > best_score)
         best_score[idxs] = score
-        best_word[idxs] = top_20[:, i]
+        best_word[idxs] = top_n[:, i]
 
     epsilon = 0.01  # To avoid rare divide-by-zero
     reward = best_score - baseline_score + epsilon
-    baseline_word = words.words(top_20[:,0]).split()[0]
-    chosen_word = words.words(best_word).split()[0]
+
+    # Display
+    idx = np.random.randint(batch_size)
+    true_words = words.words(x_words[idx, :-policy_steps]).lstrip('0 ')
+    policy_words = words.words(x_words[idx, -policy_steps:]).lstrip('0 ')
+    baseline_word = words.words(top_n[:,0]).split()[idx]
+    chosen_word = words.words(best_word).split()[idx]
     print("{} {} {}/{} ({:+.3f})".format(
-        true_words, cyan(policy_words), baseline_word, yellow(chosen_word), reward[0]))
+        true_words, cyan(policy_words), baseline_word, yellow(chosen_word), reward[idx]))
 
     return x, best_word, reward
 
