@@ -81,15 +81,20 @@ def train_pg(**params):
     model = caption.build_model(**params)
     model.load_weights(model_filename)
     model.summary()
-    opt = optimizers.SGD(decay=decay, lr=learning_rate)
+    opt = optimizers.Adam(decay=decay, lr=learning_rate)
     model.compile(optimizer=opt, loss='sparse_categorical_crossentropy', metrics=['accuracy'])
 
-    tg = caption.pg_training_generator(**params)
+    pg = caption.pg_training_generator(**params)
+    tg = caption.training_generator(**params)
 
     for i in range(epochs):
         for _ in range(batches_per_epoch):
-            pg_x, pg_y, rewards = generate_pg_example(model, tg, **params)
+            # Policy Gradient training
+            pg_x, pg_y, rewards = generate_pg_example(model, pg, **params)
             losses = model.train_on_batch(pg_x, pg_y, sample_weight=rewards)
+            # ML Training
+            #x, y = next(tg)
+            #losses = model.train_on_batch(x, y)
         model.save(model_filename)
         validate(model, **params)
 
@@ -97,14 +102,14 @@ def train_pg(**params):
 def generate_pg_example(model, training_gen, **params):
     batch_size = params['batch_size']
     best_of_n = params['best_of_n']
-    sample_temp = 1.0
-    policy_steps = np.random.randint(1, 4)
+    sample_temp = params['sample_temp']
+    policy_steps = np.random.randint(params['max_policy_steps'])
 
     # Start at a random word somewhere in a random training example
     x, y, reference_texts = next(training_gen)
     x_glob, x_loc, x_words, x_ctx = x
     # HACK: Include the end token as a word
-    reference_texts = [[r + ' 001' for r in reflist] for reflist in reference_texts]
+    reference_texts = [[r for r in reflist] for reflist in reference_texts]
 
     # Follow policy to get into a real-world state
     for _ in range(policy_steps):
@@ -121,7 +126,9 @@ def generate_pg_example(model, training_gen, **params):
     top_n = preds[:, -best_of_n:]
 
     sampled_words[:, -1] = top_n[:, 0]
-    baseline_score = get_scores(sampled_words, reference_texts, **params)
+    #baseline_score = get_scores(sampled_words, reference_texts, **params)
+    # HACK: try setting baseline score to constant
+    baseline_score = 0.1
 
     best_score = np.zeros(batch_size)
     best_word = np.zeros(batch_size, dtype=int)
@@ -133,12 +140,12 @@ def generate_pg_example(model, training_gen, **params):
                 best_score[j] = score[j]
                 best_word[j] = top_n[j, i]
 
-    reward = best_score
+    reward = best_score - baseline_score
 
     # Display
     idx = np.random.randint(batch_size)
-    true_words = words.words(x_words[idx, :-policy_steps]).lstrip('0 ')
-    policy_words = words.words(x_words[idx, -policy_steps:]).lstrip('0 ')
+    true_words = words.words(x_words[idx, :-policy_steps])
+    policy_words = words.words(x_words[idx, -policy_steps:])
     baseline_word = words.words(top_n[:,0]).split()[idx]
     chosen_word = words.words(best_word).split()[idx]
     print("{} {} {}/{} ({:+.3f})".format(
@@ -164,7 +171,7 @@ def green(val):
 
 
 def get_scores(x_words, refs, **params):
-    candidates = ints_to_words(x_words, include_end=True)
+    candidates = ints_to_words(x_words, include_end=False)
     def bleu2():
         return np.array([caption.bleu(c, r)[1] for (c, r) in zip(candidates, refs)])
     def bleu4():
@@ -172,7 +179,7 @@ def get_scores(x_words, refs, **params):
     def rouge():
         return np.array([caption.rouge(c, r) for (c, r) in zip(candidates, refs)])
     if params['score'] == 'all':
-        return bleu2() + bleu4() + rouge()
+        return (bleu2() + bleu4() + rouge()) / 3.0
     elif params['score'] == 'bleu2':
         return bleu2()
     elif params['score'] == 'bleu4':

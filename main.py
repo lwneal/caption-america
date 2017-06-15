@@ -20,6 +20,8 @@ Options:
       --learning_rate=<s>               Positive small float value [default: .01]
       --decay=<s>                       Positive small float value [default: .01]
       --best_of_n=<s>                   Integer for policy-gradient, pick highest score out of N [default: 1]
+      --sample_temp=<s>                 Temperature for sampling, >0, higher is more random [default: .5]
+      --max_policy_steps=<t>            Max number of steps to look ahead off-trajectory [default: 2]
 """
 from docopt import docopt
 from pprint import pprint
