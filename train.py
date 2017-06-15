@@ -108,8 +108,14 @@ def generate_pg_example(model, training_gen, **params):
     # Start at a random word somewhere in a random training example
     x, y, reference_texts = next(training_gen)
     x_glob, x_loc, x_words, x_ctx = x
+
     # HACK: Include the end token as a word
     #reference_texts = [[r + ' 001' for r in reflist] for reflist in reference_texts]
+
+    # HACK: Step backwards to train on earlier words
+    steps_back = np.random.randint(params['max_policy_steps'])
+    x_words = np.roll(x_words, steps_back, axis=1)
+    x_words[:, :steps_back] = 0
 
     # Follow policy to get into a real-world state
     for _ in range(policy_steps):
@@ -118,6 +124,7 @@ def generate_pg_example(model, training_gen, **params):
         #policy_preds[:, words.END_TOKEN_IDX] = 0
         x_words = np.roll(x_words, -1, axis=1)
         x_words[:, -1] = np.argmax(policy_preds, axis=1)
+
 
     # Sampled Score: score for the sentence plus one more word
     sampled_words = np.zeros((batch_size, x_words.shape[1] + 1), dtype=int)
