@@ -82,7 +82,7 @@ def train_pg(**params):
     model.load_weights(model_filename)
     model.summary()
     opt = optimizers.Adam(decay=decay, lr=learning_rate)
-    model.compile(optimizer=opt, loss='sparse_categorical_crossentropy', metrics=['accuracy'])
+    model.compile(optimizer=opt, loss='categorical_crossentropy', metrics=['accuracy'])
 
     pg = caption.pg_training_generator(**params)
     tg = caption.training_generator(**params)
@@ -93,8 +93,8 @@ def train_pg(**params):
             pg_x, pg_y, rewards = generate_pg_example(model, pg, **params)
             losses = model.train_on_batch(pg_x, pg_y, sample_weight=rewards)
             # ML Training
-            #x, y = next(tg)
-            #losses = model.train_on_batch(x, y)
+            x, y = next(tg)
+            losses = model.train_on_batch(x, y)
         model.save(model_filename)
         validate(model, **params)
 
@@ -103,17 +103,19 @@ def generate_pg_example(model, training_gen, **params):
     batch_size = params['batch_size']
     best_of_n = params['best_of_n']
     sample_temp = params['sample_temp']
-    policy_steps = np.random.randint(params['max_policy_steps'])
+    policy_steps = np.random.randint(1, params['max_policy_steps'])
 
     # Start at a random word somewhere in a random training example
     x, y, reference_texts = next(training_gen)
     x_glob, x_loc, x_words, x_ctx = x
     # HACK: Include the end token as a word
-    reference_texts = [[r for r in reflist] for reflist in reference_texts]
+    #reference_texts = [[r + ' 001' for r in reflist] for reflist in reference_texts]
 
     # Follow policy to get into a real-world state
     for _ in range(policy_steps):
         policy_preds = model.predict([x_glob, x_loc, x_words, x_ctx])
+        # HACK: Don't let it output an end token
+        #policy_preds[:, words.END_TOKEN_IDX] = 0
         x_words = np.roll(x_words, -1, axis=1)
         x_words[:, -1] = np.argmax(policy_preds, axis=1)
 
@@ -151,7 +153,9 @@ def generate_pg_example(model, training_gen, **params):
     print("{} {} {}/{} ({:+.3f})".format(
         true_words, cyan(policy_words), baseline_word, yellow(chosen_word), reward[idx]))
 
-    return x, best_word, reward
+    from keras.utils import to_categorical
+    targets = to_categorical(best_word, num_classes=words.VOCABULARY_SIZE)
+    return x, targets, reward
 
 
 def cyan(val):
