@@ -89,12 +89,12 @@ def train_pg(**params):
 
     for i in range(epochs):
         for _ in range(batches_per_epoch):
-            # Policy Gradient training
-            pg_x, pg_y, rewards = generate_pg_example(model, pg, **params)
-            losses = model.train_on_batch(pg_x, pg_y, sample_weight=rewards)
-            # ML Training
+            # Do some ML Training
             x, y = next(tg)
             losses = model.train_on_batch(x, y)
+            # then some Policy Gradient training
+            pg_x, pg_y, rewards = generate_pg_example(model, pg, **params)
+            losses = model.train_on_batch(pg_x, pg_y, sample_weight=rewards)
         model.save(model_filename)
         validate(model, **params)
 
@@ -113,7 +113,7 @@ def generate_pg_example(model, training_gen, **params):
     #reference_texts = [[r + ' 001' for r in reflist] for reflist in reference_texts]
 
     # HACK: Step backwards to train on earlier words
-    steps_back = np.random.randint(params['max_policy_steps'])
+    steps_back = np.random.randint(params['max_policy_steps'] * 2)
     x_words = np.roll(x_words, steps_back, axis=1)
     x_words[:, :steps_back] = 0
 
